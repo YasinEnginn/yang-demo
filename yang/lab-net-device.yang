@@ -1,0 +1,318 @@
+module lab-net-device {
+  yang-version 1.1;
+  namespace "http://example.com/ns/lab-net-device";
+  prefix lnd;
+
+  import ietf-inet-types { prefix inet; }
+
+  organization "Lab";
+  description
+    "Network device-like YANG model demonstrating precision:
+     key uniqueness, leafref, typedef+enum, pattern, range, union.";
+
+  // ---------------------------
+  // TYPE DEFINITIONS (typedef)
+  // ---------------------------
+
+  // Interface isimleri key olacak -> operatör hatasını azaltmak için pattern ile sıkılaştır.
+  typedef interface-name {
+    type string {
+      length "1..64";
+      // Örnek: GigabitEthernet0/0, Ethernet1/2, Loopback0
+      pattern '(GigabitEthernet|Ethernet|Loopback)[0-9]+(/[0-9]+){0,2}';
+    }
+    description "Common interface naming scheme.";
+  }
+
+  // VRF adı: operatörün yazacağı bir şey -> lowercase/dash konvansiyonu.
+  typedef vrf-name {
+    type string {
+      length "1..32";
+      pattern '[a-z][a-z0-9-]*';
+    }
+    description "VRF name (lowercase, dash allowed).";
+  }
+
+  // VLAN ID: range ile doğrulama
+  typedef vlan-id {
+    type uint16 {
+      range "1..4094";
+    }
+    description "802.1Q VLAN ID.";
+  }
+
+  // MTU: range ile doğrulama
+  typedef mtu-type {
+    type uint16 {
+      range "576..9216";
+    }
+    description "Common Ethernet MTU range.";
+  }
+
+  // ASN: union ile 2-byte / 4-byte destek (precision örneği)
+  typedef asn {
+    type union {
+      type uint16 { range "1..65535"; }
+      type uint32 { range "65536..4294967295"; }
+    }
+    description "BGP AS number (supports 2-byte and 4-byte).";
+  }
+
+  // Role: enum ile allowed values sabitleme (string karmaşasını önler)
+  typedef user-role {
+    type enumeration {
+      enum admin;
+      enum operator;
+      enum readonly;
+    }
+    description "User role on the device.";
+  }
+
+  // Route distance: range ile doğrulama
+  typedef admin-distance {
+    type uint8 {
+      range "1..255";
+    }
+    description "Administrative distance range.";
+  }
+
+  // ---------------------------
+  // DATA TREE
+  // ---------------------------
+
+  container system {
+    description "System-wide settings like local users.";
+
+    container users {
+      list user {
+        key "user-id";
+
+        leaf user-id {
+          type string {
+            length "3..32";
+            // basit username kuralı
+            pattern '[a-z][a-z0-9._-]*';
+          }
+          description "Unique user ID (key).";
+        }
+
+        leaf screen-name {
+          type string;
+          description "Display name (not unique).";
+        }
+
+        leaf role {
+          type user-role;
+          default "readonly";
+        }
+      }
+    }
+  }
+
+  container vlans {
+    description "L2 VLAN database.";
+
+    list vlan {
+      key "id";
+      leaf id { type vlan-id; }
+      leaf name { type string; }
+    }
+  }
+
+  container vrfs {
+    description "VRF instances (like network-instances).";
+
+    list vrf {
+      key "name";
+
+      leaf name { type vrf-name; }
+
+      // RD string formatını da pattern ile sıkılaştırabiliriz
+      leaf rd {
+        type string {
+          // ör: 65001:10
+          pattern '([0-9]{1,5}):([0-9]{1,10})';
+        }
+        description "Route Distinguisher (format: ASN:NN).";
+      }
+
+      leaf description { type string; }
+    }
+  }
+
+  container interfaces {
+    description "Interface configuration.";
+
+    list interface {
+      key "name";
+
+      leaf name { type interface-name; }
+
+      leaf enabled {
+        type boolean;
+        default "true";
+      }
+
+      leaf description { type string; }
+
+      leaf mtu {
+        type mtu-type;
+        default "1500";
+      }
+
+      // leafref: interface hangi VRF'e bağlı? sadece var olan VRF adları geçerli olsun.
+      leaf vrf {
+        type leafref {
+          path "/lnd:vrfs/lnd:vrf/lnd:name";
+        }
+        description "Bind interface to an existing VRF.";
+      }
+
+      container ipv4 {
+        list address {
+          key "ip";
+          leaf ip { type inet:ipv4-address; }
+          leaf prefix-length {
+            type uint8 { range "0..32"; }
+          }
+        }
+      }
+
+      // Switchport: enum + range + leafref ile hatasızlaştırma
+      container switchport {
+        leaf mode {
+          type enumeration {
+            enum access;
+            enum trunk;
+          }
+          default "access";
+        }
+
+        // access vlan id: vlan database içinden seçilebilir olsun (leafref)
+        leaf access-vlan {
+          when "../mode = 'access'";
+          type leafref {
+            path "/lnd:vlans/lnd:vlan/lnd:id";
+          }
+          description "Access VLAN must exist in /vlans.";
+        }
+      }
+    }
+  }
+
+  container routing {
+    description "Routing configuration.";
+
+    container static-routes {
+      list route {
+        key "prefix";
+
+        leaf prefix { type inet:ipv4-prefix; }
+
+        // Route VRF'e ait olabilir -> leafref ile var olan VRF'lere bağla
+        leaf vrf {
+          type leafref {
+            path "/lnd:vrfs/lnd:vrf/lnd:name";
+          }
+          description "VRF for this static route.";
+        }
+
+        // Next-hop seçenekleri: choice ile (precision)
+        choice next-hop-options {
+          mandatory true;
+
+          case next-hop-ip {
+            leaf next-hop {
+              type inet:ipv4-address;
+            }
+          }
+
+          case outgoing-interface {
+            leaf out-if {
+              type leafref {
+                path "/lnd:interfaces/lnd:interface/lnd:name";
+              }
+            }
+            leaf gateway-ip {          
+              type inet:ipv4-address;
+              description "Optional gateway IP when using an outgoing interface.";
+            }
+          }
+        }
+        leaf distance {
+          type admin-distance;
+          default "1";
+        }
+      }
+    }
+  }
+
+  container bgp {
+    description "BGP configuration (minimal).";
+
+    leaf local-as { type asn; }
+
+    list neighbor {
+      key "address";
+      leaf address { type inet:ipv4-address; }
+      leaf remote-as { type asn; }
+
+      leaf vrf {
+        type leafref {
+          path "/lnd:vrfs/lnd:vrf/lnd:name";
+        }
+      }
+    }
+  }
+}
+
+/*
+module: lab-net-device
++--rw system
+|  +--rw users
+|     +--rw user* [user-id]
+|        +--rw user-id       string
+|        +--rw screen-name?  string
+|        +--rw role?         enumeration {admin|operator|readonly}
++--rw vlans
+|  +--rw vlan* [id]
+|     +--rw id      uint16 (range 1..4094)
+|     +--rw name?   string
++--rw vrfs
+|  +--rw vrf* [name]
+|     +--rw name         string
+|     +--rw rd?          string (pattern "([0-9]{1,5}):([0-9]{1,10})")
+|     +--rw description? string
++--rw interfaces
+|  +--rw interface* [name]
+|     +--rw name         string (pattern "(GigabitEthernet|Ethernet|Loopback)...")
+|     +--rw enabled?     boolean (default true)
+|     +--rw description? string
+|     +--rw mtu?         uint16 (range 576..9216, default 1500)
+|     +--rw vrf?         -> /vrfs/vrf/name   (leafref)
+|     +--rw ipv4
+|     |  +--rw address* [ip]
+|     |     +--rw ip             inet:ipv4-address
+|     |     +--rw prefix-length? uint8 (range 0..32)
+|     +--rw switchport
+|        +--rw mode?        enumeration {access|trunk} (default access)
+|        +--rw access-vlan? -> /vlans/vlan/id          (leafref, when mode=access)
++--rw routing
+|  +--rw static-routes
+|     +--rw route* [prefix]
+|        +--rw prefix    inet:ipv4-prefix
+|        +--rw vrf?      -> /vrfs/vrf/name (leafref)
+|        +--rw (next-hop)
+|        |  +--:(next-hop-ip)
+|        |  |  +--rw next-hop   inet:ipv4-address
+|        |  +--:(outgoing-interface)
+|        |     +--rw out-if     -> /interfaces/interface/name (leafref)
+|        |     +--rw next-hop?  inet:ipv4-address
+|        +--rw distance? uint8 (range 1..255, default 1)
++--rw bgp
+   +--rw local-as?  (union uint16[1..65535] | uint32[65536..4294967295])
+   +--rw neighbor* [address]
+      +--rw address   inet:ipv4-address
+      +--rw remote-as (union uint16|uint32)
+      +--rw vrf?      -> /vrfs/vrf/name (leafref)
+*/
