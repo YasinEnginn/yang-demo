@@ -46,6 +46,12 @@ sequenceDiagram
     CLI->>CLI: Display Output
 ```
 
+## Enterprise Infographic
+
+High-resolution technical infographic (A3 landscape, vector):
+
+![NETCONF + YANG Lab Infographic](docs/netconf-yang-lab-infographic.svg)
+
 ## Code Quality & Architecture
 
 This project demonstrates several high-quality engineering practices in Go:
@@ -69,6 +75,32 @@ The application handles real-world data intricacies:
 
 ### 4. Explicit Error Handling
 Errors are propagated up the stack and handled explicitly. We avoid silencing errors, ensuring that connection failures, XML generation issues, or parsing errors are clearly reported to the user.
+
+## What is YANG?
+
+**YANG** (Yet Another Next Generation) is a data modeling language used to model configuration and state data manipulated by the **NETCONF** protocol. It provides a structured, contract-based approach to network management, replacing unstructured CLI commands with precise data models.
+
+In this project, YANG serves as the **Single Source of Truth** for:
+- **Data Structure**: Defining hierarchy (nested containers, lists, leafs).
+- **Data Constraints**: Enforcing valid ranges, patterns, and types (e.g., VLAN ID 1-4094, IPv4 format).
+- **RPC Definitions**: Modeling operations like `bounce-interface`.
+- **Notifications**: Defining events like link-state changes.
+
+### The `lab-net-device` Model
+
+We use a custom YANG module `lab-net-device` (prefix `lnd`) to simulate a realistic network device. Key components include:
+
+- **`system`**: User management with role-based access (`admin`, `operator`, `readonly`).
+- **`vlans`**: Layer 2 VLAN database with ID validation strings.
+- **`vrfs`**: Virtual Routing and Forwarding instances with Route Distinguisher (RD) validation.
+- **`interfaces`**: Physical and logical interfaces supporting:
+    - **IPv4**: Address assignments and prefix lengths.
+    - **Switchport**: Mode selection (`access`/`trunk`) and VLAN membership.
+    - **Actions**: Custom RPCs like `bounce` to simulate interface resets.
+- **`routing`**: Static routes with next-hop validation (IP or outgoing interface).
+- **`bgp`**: Basic BGP configuration including neighbors and AS numbers (supporting both 2-byte and 4-byte ASNs via `union`).
+
+All Go structures in `internal/models/labnetdevice` are strictly mapped to this model using XML tags, ensuring that every configuration pushed to the server is valid according to the YANG schema.
 
 
 ## Prerequisites
