@@ -1,0 +1,298 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="4961" height="3508" viewBox="0 0 4961 3508">
+  <defs>
+    <style>
+      .title { font: 700 56px "Segoe UI", Arial, sans-serif; fill: #1f2937; }
+      .subtitle { font: 500 24px "Segoe UI", Arial, sans-serif; fill: #4b5563; }
+      .section { fill: #f8fbff; stroke: #b7cde5; stroke-width: 2.5; rx: 20; ry: 20; }
+      .section-title { font: 700 32px "Segoe UI", Arial, sans-serif; fill: #0b5cab; }
+      .section-tr { font: 500 19px "Segoe UI", Arial, sans-serif; fill: #6b7280; }
+      .body { font: 500 21px "Segoe UI", Arial, sans-serif; fill: #1f2937; }
+      .small { font: 500 18px "Segoe UI", Arial, sans-serif; fill: #4b5563; }
+      .mono { font: 500 19px Consolas, "Courier New", monospace; fill: #111827; }
+      .codebox { fill: #eef6ff; stroke: #b7cde5; stroke-width: 1.8; rx: 12; ry: 12; }
+      .callout { fill: #effaf5; stroke: #8ed1b2; stroke-width: 1.8; rx: 12; ry: 12; }
+      .entity { fill: #ffffff; stroke: #93b9df; stroke-width: 2; rx: 14; ry: 14; }
+      .lane { stroke: #c5d8eb; stroke-width: 2; stroke-dasharray: 8 8; }
+      .arrow { stroke: #2b6cb0; stroke-width: 2.5; fill: none; marker-end: url(#arrowHead); }
+      .arrow2 { stroke: #4b5563; stroke-width: 2.2; fill: none; marker-end: url(#arrowHeadGray); }
+      .step { fill: #0b5cab; }
+      .step-text { font: 700 18px "Segoe UI", Arial, sans-serif; fill: #ffffff; }
+    </style>
+    <marker id="arrowHead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2b6cb0" />
+    </marker>
+    <marker id="arrowHeadGray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#4b5563" />
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="4961" height="3508" fill="#ffffff" />
+
+  <text x="2480.5" y="82" text-anchor="middle" class="title">NETCONF + YANG Lab: From Go Code to Device Configuration &amp; Events</text>
+  <text x="2480.5" y="118" text-anchor="middle" class="subtitle">Modern enterprise network automation flow (TR: Uctan uca otomasyon akisi)</text>
+
+  <!-- SECTION 1 -->
+  <rect class="section" x="80" y="155" width="1220" height="980" />
+  <text x="110" y="205" class="section-title">1) Repository / Code Structure</text>
+  <text x="1110" y="205" text-anchor="end" class="section-tr">(TR: Proje Yapisi)</text>
+
+  <rect class="codebox" x="110" y="240" width="1160" height="860" />
+  <text x="140" y="292" class="mono">cmd/yanglab/main.go</text>
+  <text x="540" y="292" class="small">- Orchestrates push/get/print (TR: is akisi)</text>
+
+  <text x="140" y="342" class="mono">internal/client/client.go</text>
+  <text x="540" y="342" class="small">- NETCONF SSH session + Exec() raw RPC wrapper</text>
+
+  <text x="140" y="392" class="mono">internal/models/labnetdevice/</text>
+  <text x="180" y="430" class="mono">model.go (structs)</text>
+  <text x="540" y="430" class="small">- Go structs mirror YANG containers/lists</text>
+  <text x="180" y="468" class="mono">xml.go</text>
+  <text x="540" y="468" class="small">- GenerateEditConfig() + ParseConfig() + stripNamespaces()</text>
+
+  <text x="140" y="518" class="mono">yang/lab-net-device.yang</text>
+  <text x="540" y="518" class="small">- containers, lists, action bounce, notification interface-state-change</text>
+
+  <line x1="140" y1="560" x2="1240" y2="560" stroke="#d6e4f3" stroke-width="2" />
+  <text x="140" y="610" class="small">Design intent:</text>
+  <text x="290" y="610" class="small">typed Go model + YANG constraints + NETCONF message pipeline</text>
+  <text x="140" y="646" class="small">(TR: tip-guvenli modelleme, dogrulama ve tasima katmani)</text>
+
+  <rect class="callout" x="140" y="700" width="1090" height="350" />
+  <text x="170" y="744" class="body">Icons used in this infographic:</text>
+  <rect x="180" y="775" width="44" height="30" rx="5" ry="5" fill="#e5eef8" stroke="#7fa8d6" />
+  <rect x="190" y="810" width="24" height="7" fill="#7fa8d6" />
+  <text x="245" y="797" class="small">Client</text>
+
+  <rect x="390" y="774" width="50" height="12" fill="#dcecfb" stroke="#7fa8d6" />
+  <rect x="390" y="790" width="50" height="12" fill="#dcecfb" stroke="#7fa8d6" />
+  <rect x="390" y="806" width="50" height="12" fill="#dcecfb" stroke="#7fa8d6" />
+  <text x="460" y="797" class="small">Server</text>
+
+  <ellipse cx="610" cy="784" rx="28" ry="10" fill="#e6f4ea" stroke="#69b687" />
+  <rect x="582" y="784" width="56" height="30" fill="#e6f4ea" stroke="#69b687" />
+  <ellipse cx="610" cy="814" rx="28" ry="10" fill="#e6f4ea" stroke="#69b687" />
+  <text x="652" y="797" class="small">Datastore</text>
+
+  <rect x="810" y="774" width="54" height="40" fill="#f0f7ff" stroke="#7fa8d6" />
+  <line x1="820" y1="786" x2="854" y2="786" stroke="#7fa8d6" />
+  <line x1="820" y1="796" x2="854" y2="796" stroke="#7fa8d6" />
+  <line x1="820" y1="806" x2="845" y2="806" stroke="#7fa8d6" />
+  <text x="880" y="797" class="small">YANG module</text>
+
+  <!-- SECTION 2 -->
+  <rect class="section" x="80" y="1160" width="1220" height="1220" />
+  <text x="110" y="1210" class="section-title">2) YANG Model Snapshot</text>
+  <text x="1120" y="1210" text-anchor="end" class="section-tr">(TR: YANG Ozet Agaci)</text>
+
+  <rect class="codebox" x="110" y="1245" width="1160" height="885" />
+  <text x="140" y="1290" class="mono">/lnd:system/users/user[user-id]</text>
+  <text x="140" y="1328" class="mono">/lnd:vlans/vlan[id]</text>
+  <text x="140" y="1366" class="mono">/lnd:vrfs/vrf[name]</text>
+  <text x="140" y="1404" class="mono">/lnd:interfaces/interface[name]</text>
+  <text x="180" y="1442" class="mono">- enabled, mtu, vrf (leafref)</text>
+  <text x="180" y="1480" class="mono">- ipv4/address[ip]/prefix-length</text>
+  <text x="180" y="1518" class="mono">- switchport/mode + access-vlan (when mode=access)</text>
+  <text x="140" y="1556" class="mono">/lnd:routing/static-routes/route[prefix]</text>
+  <text x="180" y="1594" class="mono">- choice: next-hop OR out-if + gateway-ip</text>
+  <text x="140" y="1632" class="mono">/lnd:bgp/local-as + neighbor[address]</text>
+
+  <line x1="140" y1="1670" x2="1240" y2="1670" stroke="#d6e4f3" stroke-width="2" />
+
+  <rect class="callout" x="140" y="1700" width="510" height="120" />
+  <text x="165" y="1744" class="small">leafref validation</text>
+  <text x="165" y="1778" class="small">(TR: referans dogrulamasi)</text>
+
+  <rect class="callout" x="700" y="1700" width="530" height="120" />
+  <text x="725" y="1744" class="small">pattern/range constraints</text>
+  <text x="725" y="1778" class="small">(TR: desen ve aralik kurallari)</text>
+
+  <rect class="callout" x="140" y="1840" width="1090" height="120" />
+  <text x="165" y="1884" class="small">choice/case mapping to XML fields</text>
+  <text x="165" y="1918" class="small">(TR: secim/case alanlarinin XML'e eslenmesi)</text>
+
+  <rect class="codebox" x="140" y="1980" width="1090" height="120" />
+  <text x="165" y="2025" class="mono">revision 2026-02-09: added action bounce + notification interface-state-change</text>
+
+  <!-- SECTION 3 -->
+  <rect class="section" x="1340" y="155" width="1520" height="2250" />
+  <text x="1370" y="205" class="section-title">3) YANG - XML Mapping</text>
+  <text x="2830" y="205" text-anchor="end" class="section-tr">(TR: Esleme Akisi)</text>
+
+  <rect class="entity" x="1370" y="240" width="1460" height="1020" />
+  <text x="1400" y="286" class="body">A) Go Structs -&gt; XML (GenerateEditConfig)</text>
+
+  <rect class="codebox" x="1400" y="315" width="520" height="300" />
+  <text x="1425" y="358" class="mono">Go structs</text>
+  <text x="1425" y="396" class="mono">Vlans</text>
+  <text x="1425" y="434" class="mono">Vrfs</text>
+  <text x="1425" y="472" class="mono">Interfaces</text>
+  <text x="1425" y="510" class="mono">Routing</text>
+  <text x="1425" y="548" class="mono">Bgp</text>
+  <text x="1425" y="586" class="mono">System</text>
+
+  <line x1="1935" y1="465" x2="2040" y2="465" class="arrow" />
+  <line x1="1935" y1="505" x2="2040" y2="505" class="arrow" />
+
+  <rect class="codebox" x="2060" y="315" width="740" height="470" />
+  <text x="2085" y="358" class="mono">&lt;config&gt;</text>
+  <text x="2085" y="392" class="mono">  &lt;lnd:vlans xmlns:lnd="http://example.com/ns/lab-net-device"&gt;</text>
+  <text x="2085" y="426" class="mono">  &lt;lnd:vrfs .../&gt;</text>
+  <text x="2085" y="460" class="mono">  &lt;lnd:interfaces .../&gt;</text>
+  <text x="2085" y="494" class="mono">  &lt;lnd:routing .../&gt;</text>
+  <text x="2085" y="528" class="mono">  &lt;lnd:bgp .../&gt;</text>
+  <text x="2085" y="562" class="mono">  &lt;lnd:system .../&gt;</text>
+  <text x="2085" y="596" class="mono">&lt;/config&gt;</text>
+
+  <rect class="callout" x="1400" y="650" width="1400" height="180" />
+  <text x="1425" y="700" class="small">Module namespace on data nodes: http://example.com/ns/lab-net-device</text>
+  <text x="1425" y="736" class="small">NETCONF base namespace on RPC envelope (<rpc>)</text>
+  <text x="1425" y="772" class="small">Note: avoid unexpected namespace by sending inner &lt;edit-config&gt; without extra xmlns on strict servers.</text>
+
+  <rect class="codebox" x="1400" y="850" width="1400" height="370" />
+  <text x="1425" y="900" class="mono">Short snippet:</text>
+  <text x="1425" y="936" class="mono">&lt;edit-config&gt;</text>
+  <text x="1425" y="972" class="mono">  &lt;target&gt;&lt;running/&gt;&lt;/target&gt;</text>
+  <text x="1425" y="1008" class="mono">  &lt;config&gt; ... lnd:* containers ... &lt;/config&gt;</text>
+  <text x="1425" y="1044" class="mono">&lt;/edit-config&gt;</text>
+  <text x="1425" y="1094" class="small">Wrapper generated by NETCONF library: &lt;rpc message-id="..." xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"&gt;</text>
+
+  <rect class="entity" x="1370" y="1290" width="1460" height="1080" />
+  <text x="1400" y="1336" class="body">B) XML -&gt; Go Structs (ParseConfig)</text>
+
+  <rect class="codebox" x="1400" y="1365" width="500" height="260" />
+  <text x="1425" y="1410" class="mono">Incoming reply</text>
+  <text x="1425" y="1446" class="mono">&lt;rpc-reply&gt;</text>
+  <text x="1425" y="1482" class="mono">  &lt;data&gt;...&lt;/data&gt;</text>
+  <text x="1425" y="1518" class="mono">&lt;/rpc-reply&gt;</text>
+
+  <line x1="1915" y1="1492" x2="2035" y2="1492" class="arrow2" />
+
+  <rect class="codebox" x="2060" y="1365" width="740" height="260" />
+  <text x="2085" y="1410" class="mono">stripNamespaces()</text>
+  <text x="2085" y="1446" class="mono">- normalize tags/prefixes</text>
+  <text x="2085" y="1482" class="mono">- clean char data</text>
+  <text x="2085" y="1518" class="mono">- keep unmarshal stable</text>
+
+  <line x1="1915" y1="1695" x2="2035" y2="1695" class="arrow2" />
+
+  <rect class="codebox" x="1400" y="1665" width="1400" height="640" />
+  <text x="1425" y="1710" class="mono">xml.Unmarshal -&gt; Config</text>
+  <text x="1425" y="1750" class="mono">Config{ Vlans, Vrfs, Interfaces, Routing, Bgp, System }</text>
+  <line x1="1425" y1="1775" x2="2765" y2="1775" stroke="#d6e4f3" stroke-width="2" />
+  <text x="1425" y="1820" class="small">Output used by CLI print stage:</text>
+  <text x="1425" y="1856" class="small">Users, VLANs, VRFs, Interface IPs, Static Routes, BGP Neighbors</text>
+  <text x="1425" y="1910" class="small">Validation context stays in YANG module loaded on server (TR: sunucu tarafi dogrulama).</text>
+  <text x="1425" y="1960" class="mono">if len(reply.Errors) &gt; 0 {</text>
+  <text x="1425" y="1996" class="mono">  return reply, fmt.Errorf("rpc-error: ...")</text>
+  <text x="1425" y="2032" class="mono">}</text>
+
+  <!-- SECTION 4 -->
+  <rect class="section" x="2890" y="155" width="1990" height="1830" />
+  <text x="2920" y="205" class="section-title">4) NETCONF Message Flow</text>
+  <text x="4850" y="205" text-anchor="end" class="section-tr">(TR: Mesaj Zaman Cizgisi)</text>
+
+  <rect class="entity" x="3020" y="250" width="760" height="180" />
+  <text x="3400" y="312" text-anchor="middle" class="body">Go NETCONF Client (SSH:830)</text>
+  <text x="3400" y="346" text-anchor="middle" class="small">(cmd/yanglab + internal/client)</text>
+
+  <rect class="entity" x="3990" y="250" width="760" height="180" />
+  <text x="4370" y="312" text-anchor="middle" class="body">NETCONF Server (netopeer2)</text>
+  <text x="4370" y="346" text-anchor="middle" class="small">YANG validation + datastore operations</text>
+
+  <ellipse cx="4370" cy="500" rx="120" ry="26" fill="#e6f4ea" stroke="#69b687" stroke-width="2" />
+  <rect x="4250" y="500" width="240" height="82" fill="#e6f4ea" stroke="#69b687" stroke-width="2" />
+  <ellipse cx="4370" cy="582" rx="120" ry="26" fill="#e6f4ea" stroke="#69b687" stroke-width="2" />
+  <text x="4370" y="550" text-anchor="middle" class="small">running datastore</text>
+
+  <line x1="3400" y1="430" x2="3400" y2="1845" class="lane" />
+  <line x1="4370" y1="430" x2="4370" y2="1845" class="lane" />
+
+  <circle cx="2960" cy="640" r="18" class="step" /><text x="2960" y="646" text-anchor="middle" class="step-text">1</text>
+  <line x1="3430" y1="640" x2="4340" y2="640" class="arrow" />
+  <text x="3885" y="624" text-anchor="middle" class="mono">&lt;hello&gt; capability exchange</text>
+  <line x1="4340" y1="690" x2="3430" y2="690" class="arrow2" />
+  <text x="3885" y="712" text-anchor="middle" class="small">base:1.0, candidate/startup/notifications (if enabled)</text>
+
+  <circle cx="2960" cy="870" r="18" class="step" /><text x="2960" y="876" text-anchor="middle" class="step-text">2</text>
+  <line x1="3430" y1="870" x2="4340" y2="870" class="arrow" />
+  <text x="3885" y="854" text-anchor="middle" class="mono">pushNetworkConfig(): &lt;edit-config&gt; target=&lt;running/&gt;</text>
+  <line x1="4340" y1="918" x2="4410" y2="918" class="arrow" />
+  <text x="4520" y="924" class="small">validate + apply</text>
+  <line x1="4340" y1="970" x2="3430" y2="970" class="arrow2" />
+  <text x="3885" y="992" text-anchor="middle" class="mono">&lt;rpc-reply&gt;&lt;ok/&gt;&lt;/rpc-reply&gt;</text>
+
+  <circle cx="2960" cy="1160" r="18" class="step" /><text x="2960" y="1166" text-anchor="middle" class="step-text">3</text>
+  <line x1="3430" y1="1160" x2="4340" y2="1160" class="arrow" />
+  <text x="3885" y="1144" text-anchor="middle" class="mono">getNetworkConfig(): &lt;get-config&gt; + subtree filter (lnd:*)</text>
+  <line x1="4340" y1="1210" x2="4410" y2="1210" class="arrow" />
+  <text x="4520" y="1216" class="small">read running</text>
+  <line x1="4340" y1="1260" x2="3430" y2="1260" class="arrow2" />
+  <text x="3885" y="1282" text-anchor="middle" class="mono">&lt;rpc-reply&gt;&lt;data&gt;...&lt;/data&gt;&lt;/rpc-reply&gt;</text>
+
+  <circle cx="2960" cy="1450" r="18" class="step" /><text x="2960" y="1456" text-anchor="middle" class="step-text">4</text>
+  <rect class="codebox" x="3090" y="1408" width="620" height="220" />
+  <text x="3120" y="1452" class="mono">Parse + Print</text>
+  <text x="3120" y="1488" class="small">Users, VLANs, VRFs, Interfaces, Routes, BGP</text>
+  <text x="3120" y="1524" class="small">(TR: Cozumle ve yazdir)</text>
+  <line x1="3430" y1="1560" x2="3430" y2="1680" class="arrow2" />
+  <text x="3460" y="1655" class="small">local output</text>
+
+  <text x="3120" y="1770" class="small">Transport label: SSH NETCONF session</text>
+  <line x1="3120" y1="1788" x2="4300" y2="1788" stroke="#2b6cb0" stroke-width="1.7" stroke-dasharray="7 7" />
+
+  <!-- SECTION 5 -->
+  <rect class="section" x="2890" y="2015" width="1990" height="620" />
+  <text x="2920" y="2065" class="section-title">5) Action / RPC Operation</text>
+  <text x="4850" y="2065" text-anchor="end" class="section-tr">(TR: Islem Cagrisi)</text>
+
+  <rect class="codebox" x="2920" y="2098" width="1930" height="500" />
+  <text x="2950" y="2142" class="mono">Action: bounce (interface operation)</text>
+  <text x="2950" y="2178" class="mono">Path: /lnd:interfaces/lnd:interface[name='GigabitEthernet0/0']/lnd:bounce</text>
+  <text x="2950" y="2214" class="mono">Input: down-seconds=3, reason="flap test"</text>
+  <line x1="2950" y1="2240" x2="4820" y2="2240" stroke="#d6e4f3" stroke-width="2" />
+  <text x="2950" y="2282" class="mono">&lt;action&gt;...&lt;lnd:bounce&gt;...&lt;/lnd:bounce&gt;...&lt;/action&gt;</text>
+  <text x="2950" y="2318" class="mono">output choice outcome: success | rejected | failure</text>
+  <text x="2950" y="2368" class="mono">Sample success reply:</text>
+  <text x="2950" y="2404" class="mono">&lt;rpc-reply&gt;&lt;success/&gt;&lt;/rpc-reply&gt;</text>
+  <text x="2950" y="2458" class="small">Use correct namespace context for action invocation.</text>
+
+  <!-- SECTION 6 -->
+  <rect class="section" x="80" y="2420" width="2800" height="1000" />
+  <text x="110" y="2470" class="section-title">6) Notification Flow / Event Stream</text>
+  <text x="2850" y="2470" text-anchor="end" class="section-tr">(TR: Bildirim Akisi)</text>
+
+  <rect class="codebox" x="110" y="2504" width="2740" height="890" />
+  <text x="140" y="2548" class="mono">Client subscription:</text>
+  <text x="140" y="2584" class="mono">&lt;create-subscription xmlns="urn:ietf:params:xml:ns:netconf:notification:1.0"/&gt;</text>
+  <line x1="140" y1="2610" x2="2810" y2="2610" stroke="#d6e4f3" stroke-width="2" />
+  <text x="140" y="2652" class="mono">Server async event:</text>
+  <text x="140" y="2688" class="mono">&lt;notification&gt;</text>
+  <text x="140" y="2724" class="mono">  &lt;eventTime&gt;2026-02-09T19:00:00Z&lt;/eventTime&gt;</text>
+  <text x="140" y="2760" class="mono">  &lt;lnd:interface-state-change xmlns:lnd="http://example.com/ns/lab-net-device"&gt;</text>
+  <text x="140" y="2796" class="mono">    &lt;interface&gt;GigabitEthernet0/0&lt;/interface&gt;</text>
+  <text x="140" y="2832" class="mono">    &lt;new-state&gt;down&lt;/new-state&gt;</text>
+  <text x="140" y="2868" class="mono">    &lt;reason&gt;loss of signal&lt;/reason&gt;</text>
+  <text x="140" y="2904" class="mono">    &lt;timestamp&gt;2026-02-09T19:00:00Z&lt;/timestamp&gt;</text>
+  <text x="140" y="2940" class="mono">  &lt;/lnd:interface-state-change&gt;</text>
+  <text x="140" y="2976" class="mono">&lt;/notification&gt;</text>
+  <line x1="140" y1="3005" x2="2810" y2="3005" stroke="#d6e4f3" stroke-width="2" />
+  <text x="140" y="3050" class="small">Asynchronous channel from server to client after subscription.</text>
+  <text x="140" y="3084" class="small">(TR: Abonelik sonrasi olaylar istemciye akar)</text>
+
+  <!-- SECTION 7 -->
+  <rect class="section" x="2890" y="2660" width="1990" height="760" />
+  <text x="2920" y="2710" class="section-title">7) NETCONF Message Types Legend</text>
+  <text x="4850" y="2710" text-anchor="end" class="section-tr">(TR: Mesaj Sozlugu)</text>
+
+  <rect class="codebox" x="2920" y="2744" width="1930" height="645" />
+  <text x="2950" y="2790" class="mono">&lt;hello&gt;          capabilities handshake</text>
+  <text x="2950" y="2830" class="mono">&lt;rpc&gt;            request wrapper</text>
+  <text x="2950" y="2870" class="mono">&lt;rpc-reply&gt;      response wrapper</text>
+  <text x="2950" y="2910" class="mono">&lt;ok/&gt;            success status</text>
+  <text x="2950" y="2950" class="mono">&lt;rpc-error&gt;      error details: type/tag/severity/message/path</text>
+  <text x="2950" y="2990" class="mono">&lt;notification&gt;   async event (subscription required)</text>
+  <line x1="2950" y1="3020" x2="4820" y2="3020" stroke="#d6e4f3" stroke-width="2" />
+  <text x="2950" y="3062" class="small">Diagram style: thin arrows, rounded boxes, clear alignment, minimal palette.</text>
+  <text x="2950" y="3098" class="small">Use as README architecture figure or export to PDF/PNG for A3 print.</text>
+  <text x="2950" y="3138" class="small">Suggested export: 4961x3508 for A3 landscape at 300 dpi.</text>
+</svg>

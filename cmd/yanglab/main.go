@@ -112,7 +112,7 @@ func getNetworkConfig(c *client.Client) {
 			fmt.Printf("    - %s (Enabled: %v)\n", i.Name, safeBool(i.Enabled))
 			if i.IPv4 != nil && len(i.IPv4.Address) > 0 {
 				for _, addr := range i.IPv4.Address {
-					fmt.Printf("      IP: %s/%d\n", addr.IP, addr.PrefixLength)
+					fmt.Printf("      IP: %s/%d\n", addr.IP, safeUint8(addr.PrefixLength))
 				}
 			}
 		}
@@ -121,14 +121,23 @@ func getNetworkConfig(c *client.Client) {
 	if cfg.Routing != nil && cfg.Routing.StaticRoutes != nil {
 		fmt.Println("  Static Routes:")
 		for _, r := range cfg.Routing.StaticRoutes.Route {
-			fmt.Printf("    - %s via %s (Dist: %d, VRF: %s)\n", r.Prefix, r.NextHop, r.Distance, r.Vrf)
+			fmt.Printf("    - %s via %s (Dist: %d, VRF: %s)\n",
+				r.Prefix,
+				safeString(r.NextHop),
+				safeUint8(r.Distance),
+				r.Vrf,
+			)
 		}
 	}
 
 	if cfg.Bgp != nil {
-		fmt.Printf("  BGP (Local AS: %d):\n", cfg.Bgp.LocalAs)
+		fmt.Printf("  BGP (Local AS: %d):\n", safeUint32(cfg.Bgp.LocalAs))
 		for _, n := range cfg.Bgp.Neighbor {
-			fmt.Printf("    - Neighbor: %s (Remote AS: %d, VRF: %s)\n", n.Address, n.RemoteAs, n.Vrf)
+			fmt.Printf("    - Neighbor: %s (Remote AS: %d, VRF: %s)\n",
+				n.Address,
+				safeUint32(n.RemoteAs),
+				n.Vrf,
+			)
 		}
 	}
 }
@@ -138,4 +147,25 @@ func safeBool(b *bool) bool {
 		return false
 	}
 	return *b
+}
+
+func safeUint8(p *uint8) uint8 {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
+func safeUint32(p *uint32) uint32 {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
+func safeString(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
 }

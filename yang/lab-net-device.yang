@@ -4,27 +4,36 @@ module lab-net-device {
   prefix lnd;
 
   import ietf-inet-types { prefix inet; }
+  import ietf-yang-types { prefix yang; }
+
+  /* -------------------------------------------------
+     NOTIFICATION: interface link state change event
+     ------------------------------------------------- */
 
   organization "Lab";
   description
     "Network device-like YANG model demonstrating precision:
      key uniqueness, leafref, typedef+enum, pattern, range, union.";
 
-  // ---------------------------
-  // TYPE DEFINITIONS (typedef)
-  // ---------------------------
+  revision 2026-02-09 {
+    description
+      "Added interface action 'bounce' and notification 'interface-state-change'.";
+  }
+  /* ---------------------------
+     TYPE DEFINITIONS (typedef)
+     --------------------------- */
 
-  // Interface isimleri key olacak -> operatör hatasını azaltmak için pattern ile sıkılaştır.
+  /* Interface names are keys -> tighten with pattern to reduce operator errors. */
   typedef interface-name {
     type string {
       length "1..64";
-      // Örnek: GigabitEthernet0/0, Ethernet1/2, Loopback0
+      /* Examples: GigabitEthernet0/0, Ethernet1/2, Loopback0 */
       pattern '(GigabitEthernet|Ethernet|Loopback)[0-9]+(/[0-9]+){0,2}';
     }
     description "Common interface naming scheme.";
   }
 
-  // VRF adı: operatörün yazacağı bir şey -> lowercase/dash konvansiyonu.
+  /* VRF name: operator-provided -> enforce lowercase/dash convention. */
   typedef vrf-name {
     type string {
       length "1..32";
@@ -33,7 +42,7 @@ module lab-net-device {
     description "VRF name (lowercase, dash allowed).";
   }
 
-  // VLAN ID: range ile doğrulama
+  /* VLAN ID validation via range. */
   typedef vlan-id {
     type uint16 {
       range "1..4094";
@@ -41,7 +50,7 @@ module lab-net-device {
     description "802.1Q VLAN ID.";
   }
 
-  // MTU: range ile doğrulama
+  /* MTU validation via range. */
   typedef mtu-type {
     type uint16 {
       range "576..9216";
@@ -49,7 +58,7 @@ module lab-net-device {
     description "Common Ethernet MTU range.";
   }
 
-  // ASN: union ile 2-byte / 4-byte destek (precision örneği)
+  /* ASN: union supports 2-byte / 4-byte (precision example). */
   typedef asn {
     type union {
       type uint16 { range "1..65535"; }
@@ -58,7 +67,7 @@ module lab-net-device {
     description "BGP AS number (supports 2-byte and 4-byte).";
   }
 
-  // Role: enum ile allowed values sabitleme (string karmaşasını önler)
+  /* Role: enum constrains allowed values. */
   typedef user-role {
     type enumeration {
       enum admin;
@@ -68,7 +77,7 @@ module lab-net-device {
     description "User role on the device.";
   }
 
-  // Route distance: range ile doğrulama
+  /* Route distance validation via range. */
   typedef admin-distance {
     type uint8 {
       range "1..255";
@@ -76,9 +85,107 @@ module lab-net-device {
     description "Administrative distance range.";
   }
 
-  // ---------------------------
-  // DATA TREE
-  // ---------------------------
+  /* ---------------------------
+     DATA TREE
+     --------------------------- */
+
+  /* ---------------------------
+     RPC OPERATIONS
+     --------------------------- */
+
+  rpc add-user {
+    description
+      "Create a new local user.";
+
+    input {
+      leaf user-id {
+        type string {
+          length "3..32";
+          pattern '[a-z][a-z0-9._-]*';
+        }
+        description "Unique user ID.";
+      }
+
+      leaf screen-name {
+        type string;
+        description "Display name.";
+      }
+
+      leaf role {
+        type user-role;
+        default "readonly";
+      }
+    }
+
+    output {
+      choice outcome {
+        description
+          "Result of the operation.";
+
+        case success {
+          leaf success {
+            type empty;
+          }
+        }
+
+        case rejected {
+          leaf rejected {
+            type string;
+            description "Reason for rejection.";
+          }
+        }
+
+        case failure {
+          leaf failure {
+            type string;
+            description "Error message.";
+          }
+        }
+      }
+    }
+  }
+
+  rpc delete-user {
+    description
+      "Delete an existing local user.";
+
+    input {
+      leaf user-id {
+        type string {
+          length "3..32";
+          pattern '[a-z][a-z0-9._-]*';
+        }
+        description "User ID to delete.";
+      }
+    }
+
+    output {
+      choice outcome {
+        description
+          "Result of the operation.";
+
+        case success {
+          leaf success {
+            type empty;
+          }
+        }
+
+        case rejected {
+          leaf rejected {
+            type string;
+            description "Reason for rejection.";
+          }
+        }
+
+        case failure {
+          leaf failure {
+            type string;
+            description "Error message.";
+          }
+        }
+      }
+    }
+  }
 
   container system {
     description "System-wide settings like local users.";
@@ -90,7 +197,7 @@ module lab-net-device {
         leaf user-id {
           type string {
             length "3..32";
-            // basit username kuralı
+            /* Simple username rule. */
             pattern '[a-z][a-z0-9._-]*';
           }
           description "Unique user ID (key).";
@@ -127,11 +234,11 @@ module lab-net-device {
 
       leaf name { type vrf-name; }
 
-      // RD string formatını da pattern ile sıkılaştırabiliriz
+      /* RD string format is tightened with pattern. */
       leaf rd {
         type string {
-          // ör: 65001:10
-          pattern '([0-9]{1,5}):([0-9]{1,10})';
+          /* Example: 65001:10 */
+          pattern '([0-9]{1,10}):([0-9]{1,10})';
         }
         description "Route Distinguisher (format: ASN:NN).";
       }
@@ -160,7 +267,6 @@ module lab-net-device {
         default "1500";
       }
 
-      // leafref: interface hangi VRF'e bağlı? sadece var olan VRF adları geçerli olsun.
       leaf vrf {
         type leafref {
           path "/lnd:vrfs/lnd:vrf/lnd:name";
@@ -178,7 +284,6 @@ module lab-net-device {
         }
       }
 
-      // Switchport: enum + range + leafref ile hatasızlaştırma
       container switchport {
         leaf mode {
           type enumeration {
@@ -188,13 +293,71 @@ module lab-net-device {
           default "access";
         }
 
-        // access vlan id: vlan database içinden seçilebilir olsun (leafref)
         leaf access-vlan {
           when "../mode = 'access'";
           type leafref {
             path "/lnd:vlans/lnd:vlan/lnd:id";
           }
           description "Access VLAN must exist in /vlans.";
+        }
+      }
+
+      /* -------------------------------------------------
+         ACTION: Bounce interface (admin down then up)
+         ------------------------------------------------- */
+      action bounce {
+        description
+          "A basic operation example: this interface is shut down (admin down),
+          then after a delay it is brought back up (admin up). This forces link
+          renegotiation and can provide quicker recovery in some scenarios.";
+
+        input {
+          leaf down-seconds {
+            type uint16 { range "1..300"; }
+            default "3";
+            description
+              "How long the interface stays down (seconds). Too long increases
+              outage time; too short may be insufficient for renegotiation.";
+          }
+
+          leaf reason {
+            type string {
+              length "0..128";
+            }
+            description
+              "Operator note. Example: 'flap test', 'stuck port recovery', 'remote hands request'.";
+          }
+        }
+
+        output {
+          choice outcome {
+            description
+              "The result is grouped into three outcomes: success, rejected, or failure.";
+
+            case success {
+              leaf success {
+                type empty;
+                description
+                  "Bounce request accepted and executed (or queued for execution).";
+              }
+            }
+
+            case rejected {
+              leaf rejected {
+                type string;
+                description
+                  "Server rejected the request. Example: unauthorized user, policy block, interface locked.";
+              }
+            }
+
+            case failure {
+              leaf failure {
+                type string;
+                description
+                  "Operation started but did not complete. Example: internal error, insufficient resources.";
+              }
+            }
+          }
         }
       }
     }
@@ -209,7 +372,7 @@ module lab-net-device {
 
         leaf prefix { type inet:ipv4-prefix; }
 
-        // Route VRF'e ait olabilir -> leafref ile var olan VRF'lere bağla
+        /* Route may belong to a VRF -> leafref to existing VRFs. */
         leaf vrf {
           type leafref {
             path "/lnd:vrfs/lnd:vrf/lnd:name";
@@ -217,7 +380,7 @@ module lab-net-device {
           description "VRF for this static route.";
         }
 
-        // Next-hop seçenekleri: choice ile (precision)
+        /* Next-hop choices via choice (precision). */
         choice next-hop-options {
           mandatory true;
 
@@ -243,9 +406,9 @@ module lab-net-device {
           type admin-distance;
           default "1";
         }
-      }
-    }
-  }
+      }  /* list route */
+    }    /* container static-routes */
+  }      /* container routing */
 
   container bgp {
     description "BGP configuration (minimal).";
@@ -264,55 +427,129 @@ module lab-net-device {
       }
     }
   }
+
+  notification interface-state-change {
+    description
+      "Device-side event emitted when an interface link state changes (e.g., up/down).";
+
+    leaf interface {
+      type leafref {
+        path "/lnd:interfaces/lnd:interface/lnd:name";
+      }
+      description
+        "The interface whose state changed. Leafref ensures it exists in the model.";
+    }
+
+    leaf new-state {
+      type enumeration {
+        enum up;
+        enum down;
+      }
+      description
+        "New link state. Additional states (e.g., admin-down, testing) can be added later.";
+    }
+
+    leaf reason {
+      type string {
+        length "0..256";
+      }
+      description
+        "Free-form reason text. Example: 'loss of signal', 'admin shutdown', 'err-disable'.";
+    }
+
+    leaf timestamp {
+      type yang:date-and-time;
+      description
+        "Timestamp in RFC 6991 date-and-time format.";
+    }
+  }
+
+  notification user-change {
+    description
+      "Emitted when a local user is created, updated, or deleted.";
+
+    leaf operation {
+      type enumeration {
+        enum created;
+        enum updated;
+        enum deleted;
+      }
+      description "Type of user change.";
+    }
+
+    leaf user-id {
+      type string {
+        length "3..32";
+        pattern '[a-z][a-z0-9._-]*';
+      }
+      description "User ID affected.";
+    }
+
+    leaf screen-name {
+      type string;
+      description "Display name (if available).";
+    }
+
+    leaf role {
+      type user-role;
+      description "Role after change (if available).";
+    }
+
+    leaf timestamp {
+      type yang:date-and-time;
+      description
+        "Timestamp in RFC 6991 date-and-time format.";
+    }
+  }
 }
 
 /*
-module: lab-net-device
-+--rw system
-|  +--rw users
-|     +--rw user* [user-id]
-|        +--rw user-id       string
-|        +--rw screen-name?  string
-|        +--rw role?         enumeration {admin|operator|readonly}
-+--rw vlans
-|  +--rw vlan* [id]
-|     +--rw id      uint16 (range 1..4094)
-|     +--rw name?   string
-+--rw vrfs
-|  +--rw vrf* [name]
-|     +--rw name         string
-|     +--rw rd?          string (pattern "([0-9]{1,5}):([0-9]{1,10})")
-|     +--rw description? string
-+--rw interfaces
-|  +--rw interface* [name]
-|     +--rw name         string (pattern "(GigabitEthernet|Ethernet|Loopback)...")
-|     +--rw enabled?     boolean (default true)
-|     +--rw description? string
-|     +--rw mtu?         uint16 (range 576..9216, default 1500)
-|     +--rw vrf?         -> /vrfs/vrf/name   (leafref)
-|     +--rw ipv4
-|     |  +--rw address* [ip]
-|     |     +--rw ip             inet:ipv4-address
-|     |     +--rw prefix-length? uint8 (range 0..32)
-|     +--rw switchport
-|        +--rw mode?        enumeration {access|trunk} (default access)
-|        +--rw access-vlan? -> /vlans/vlan/id          (leafref, when mode=access)
-+--rw routing
-|  +--rw static-routes
-|     +--rw route* [prefix]
-|        +--rw prefix    inet:ipv4-prefix
-|        +--rw vrf?      -> /vrfs/vrf/name (leafref)
-|        +--rw (next-hop)
-|        |  +--:(next-hop-ip)
-|        |  |  +--rw next-hop   inet:ipv4-address
-|        |  +--:(outgoing-interface)
-|        |     +--rw out-if     -> /interfaces/interface/name (leafref)
-|        |     +--rw next-hop?  inet:ipv4-address
-|        +--rw distance? uint8 (range 1..255, default 1)
-+--rw bgp
-   +--rw local-as?  (union uint16[1..65535] | uint32[65536..4294967295])
-   +--rw neighbor* [address]
-      +--rw address   inet:ipv4-address
-      +--rw remote-as (union uint16|uint32)
-      +--rw vrf?      -> /vrfs/vrf/name (leafref)
-*/
+  module: lab-net-device
+  +--rw system
+  |  +--rw users
+  |     +--rw user* [user-id]
+  |        +--rw user-id       string
+  |        +--rw screen-name?  string
+  |        +--rw role?         enumeration {admin|operator|readonly}
+  +--rw vlans
+  |  +--rw vlan* [id]
+  |     +--rw id      uint16 (range 1..4094)
+  |     +--rw name?   string
+  +--rw vrfs
+  |  +--rw vrf* [name]
+  |     +--rw name         string
+  |     +--rw rd?          string (pattern "([0-9]{1,10}):([0-9]{1,10})")
+  |     +--rw description? string
+  +--rw interfaces
+  |  +--rw interface* [name]
+  |     +--rw name         string (pattern "(GigabitEthernet|Ethernet|Loopback)...")
+  |     +--rw enabled?     boolean (default true)
+  |     +--rw description? string
+  |     +--rw mtu?         uint16 (range 576..9216, default 1500)
+  |     +--rw vrf?         -> /vrfs/vrf/name   (leafref)
+  |     +--rw ipv4
+  |     |  +--rw address* [ip]
+  |     |     +--rw ip             inet:ipv4-address
+  |     |     +--rw prefix-length  uint8 (range 0..32)
+  |     +--rw switchport
+  |        +--rw mode?        enumeration {access|trunk} (default access)
+  |        +--rw access-vlan? -> /vlans/vlan/id          (leafref, when mode=access)
+  +--rw routing
+  |  +--rw static-routes
+  |     +--rw route* [prefix]
+  |        +--rw prefix    inet:ipv4-prefix
+  |        +--rw vrf?      -> /vrfs/vrf/name (leafref)
+  |        +--rw (next-hop)
+  |        |  +--:(next-hop-ip)
+  |        |  |  +--rw next-hop   inet:ipv4-address
+  |        |  +--:(outgoing-interface)
+  |        |     +--rw out-if     -> /interfaces/interface/name (leafref)
+  |        |     +--rw gateway-ip?  inet:ipv4-address
+  |        +--rw distance? uint8 (range 1..255, default 1)
+  +--rw bgp
+    +--rw local-as?  (union uint16[1..65535] | uint32[65536..4294967295])
+    +--rw neighbor* [address]
+        +--rw address   inet:ipv4-address
+        +--rw remote-as (union uint16|uint32)
+        +--rw vrf?      -> /vrfs/vrf/name (leafref)
+  */

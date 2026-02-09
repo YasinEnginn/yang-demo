@@ -34,6 +34,10 @@ func createDemoData() (*labnetdevice.Vlans, *labnetdevice.Vrfs, *labnetdevice.In
 	enabled := true
 	mtu := uint16(1500)
 
+	accessVlan10 := uint16(10)
+	pl30 := uint8(30)
+	pl32 := uint8(32)
+
 	interfaces := &labnetdevice.Interfaces{
 		Interface: []labnetdevice.Interface{
 			{
@@ -43,11 +47,11 @@ func createDemoData() (*labnetdevice.Vlans, *labnetdevice.Vrfs, *labnetdevice.In
 				Vrf:     "blue",
 				Switchport: &labnetdevice.Switchport{
 					Mode:       "access",
-					AccessVlan: 10,
+					AccessVlan: &accessVlan10,
 				},
 				IPv4: &labnetdevice.IPv4{
 					Address: []labnetdevice.IPv4Address{
-						{IP: "192.0.2.1", PrefixLength: 30},
+						{IP: "192.0.2.1", PrefixLength: &pl30},
 					},
 				},
 			},
@@ -58,7 +62,7 @@ func createDemoData() (*labnetdevice.Vlans, *labnetdevice.Vrfs, *labnetdevice.In
 				Vrf:     "red",
 				IPv4: &labnetdevice.IPv4{
 					Address: []labnetdevice.IPv4Address{
-						{IP: "10.0.0.1", PrefixLength: 32},
+						{IP: "10.0.0.1", PrefixLength: &pl32},
 					},
 				},
 			},
@@ -66,26 +70,32 @@ func createDemoData() (*labnetdevice.Vlans, *labnetdevice.Vrfs, *labnetdevice.In
 	}
 
 	// Routing
+	nh := "192.0.2.2"
+	dist10 := uint8(10)
+
 	routing := &labnetdevice.Routing{
 		StaticRoutes: &labnetdevice.StaticRoutes{
 			Route: []labnetdevice.StaticRoute{
 				{
 					Prefix:   "203.0.113.0/24",
 					Vrf:      "blue",
-					NextHop:  "192.0.2.2",
-					Distance: 10,
+					NextHop:  &nh,
+					Distance: &dist10,
 				},
 			},
 		},
 	}
 
 	// BGP
+	localAs := uint32(65001)
+	remoteAs := uint32(65002)
+
 	bgp := &labnetdevice.Bgp{
-		LocalAs: 65001,
+		LocalAs: &localAs,
 		Neighbor: []labnetdevice.Neighbor{
 			{
 				Address:  "192.0.2.2",
-				RemoteAs: 65002,
+				RemoteAs: &remoteAs,
 				Vrf:      "blue",
 			},
 		},

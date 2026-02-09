@@ -79,8 +79,8 @@ type Interface struct {
 }
 
 type Switchport struct {
-	Mode       string `xml:"mode,omitempty"`        // access | trunk
-	AccessVlan uint16 `xml:"access-vlan,omitempty"` // when mode=access
+	Mode       string  `xml:"mode,omitempty"`        // access | trunk
+	AccessVlan *uint16 `xml:"access-vlan,omitempty"` // when mode=access
 }
 
 type IPv4 struct {
@@ -89,7 +89,7 @@ type IPv4 struct {
 
 type IPv4Address struct {
 	IP           string `xml:"ip"`
-	PrefixLength uint8  `xml:"prefix-length,omitempty"`
+	PrefixLength *uint8 `xml:"prefix-length,omitempty"`
 }
 
 // Routing Container
@@ -105,22 +105,25 @@ type StaticRoutes struct {
 type StaticRoute struct {
 	Prefix   string `xml:"prefix"`
 	Vrf      string `xml:"vrf,omitempty"`
-	Distance uint8  `xml:"distance,omitempty"`
-	// Choice: next-hop (IP) or outgoing-interface
-	NextHop string `xml:"next-hop,omitempty"`
+	Distance *uint8 `xml:"distance,omitempty"`
+	// Choice: next-hop-ip
+	NextHop *string `xml:"next-hop,omitempty"`
+	// Choice: outgoing-interface
+	OutIf     *string `xml:"out-if,omitempty"`
+	GatewayIP *string `xml:"gateway-ip,omitempty"`
 }
 
 // Bgp Container
 type Bgp struct {
 	Xmlns    string     `xml:"xmlns,attr,omitempty"`
-	LocalAs  uint32     `xml:"local-as,omitempty"`
+	LocalAs  *uint32    `xml:"local-as,omitempty"`
 	Neighbor []Neighbor `xml:"neighbor"`
 }
 
 type Neighbor struct {
-	Address  string `xml:"address"`
-	RemoteAs uint32 `xml:"remote-as,omitempty"`
-	Vrf      string `xml:"vrf,omitempty"`
+	Address  string  `xml:"address"`
+	RemoteAs *uint32 `xml:"remote-as,omitempty"`
+	Vrf      string  `xml:"vrf,omitempty"`
 }
 
 // Helper to generate XML string
@@ -165,8 +168,8 @@ func GenerateEditConfig(vlans *Vlans, vrfs *Vrfs, interfaces *Interfaces, routin
 		Bgp        *Bgp        `xml:"bgp,omitempty"`
 		System     *System     `xml:"system,omitempty"`
 	}{
-		// Config should remain in netconf base NS; child containers carry model NS.
-		Xmlns:      NetconfBase,
+		// Leave <config> without a namespace; child containers carry model NS.
+		Xmlns:      "",
 		Vlans:      vlans,
 		Vrfs:       vrfs,
 		Interfaces: interfaces,
@@ -209,6 +212,7 @@ func GenerateEditConfig(vlans *Vlans, vrfs *Vrfs, interfaces *Interfaces, routin
 	return string(output), nil
 }
 
+// XML -> GO
 // ParseConfig unmarshals specific sections from a NETCONF <data> or <config> return.
 func ParseConfig(data string) (*Config, error) {
 	// NETCONF replies wrap module data in <data> and usually include namespaces.
