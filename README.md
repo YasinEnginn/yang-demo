@@ -50,7 +50,7 @@ sequenceDiagram
 
 High-resolution technical infographic (A3 landscape, vector):
 
-![NETCONF + YANG Lab Infographic](docs/netconf-yang-lab-infographic.svg)
+![NETCONF + YANG Lab Infographic](./docs/netconf-yang-lab-infographic.svg)
 
 ## Code Quality & Architecture
 
