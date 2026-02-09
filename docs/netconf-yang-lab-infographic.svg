@@ -145,7 +145,7 @@
 
   <rect class="callout" x="1400" y="650" width="1400" height="180" />
   <text x="1425" y="700" class="small">Module namespace on data nodes: http://example.com/ns/lab-net-device</text>
-  <text x="1425" y="736" class="small">NETCONF base namespace on RPC envelope (<rpc>)</text>
+  <text x="1425" y="736" class="small">NETCONF base namespace on RPC envelope (&lt;rpc&gt;)</text>
   <text x="1425" y="772" class="small">Note: avoid unexpected namespace by sending inner &lt;edit-config&gt; without extra xmlns on strict servers.</text>
 
   <rect class="codebox" x="1400" y="850" width="1400" height="370" />
