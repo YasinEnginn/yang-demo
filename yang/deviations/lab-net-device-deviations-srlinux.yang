@@ -1,0 +1,30 @@
+module lab-net-device-deviations-srlinux {
+  yang-version 1.1;
+  namespace "http://example.com/ns/lab-net-device-deviations/srlinux";
+  prefix lndd;
+
+  import lab-net-device {
+    prefix lnd;
+    revision-date 2026-02-09;
+  }
+
+  organization "Lab";
+  description
+    "Deviations for a specific platform profile (example: SR Linux lab image).";
+
+  revision 2026-02-10 {
+    description "Initial deviation declarations.";
+  }
+
+  deviation "/lnd:bgp/lnd:neighbor/lnd:vrf" {
+    deviate not-supported;
+  }
+
+  deviation "/lnd:interfaces/lnd:interface/lnd:bounce" {
+    deviate not-supported;
+  }
+
+  deviation "/lnd:interfaces/lnd:interface/lnd:switchport" {
+    deviate not-supported;
+  }
+}

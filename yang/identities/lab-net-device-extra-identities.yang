@@ -1,0 +1,39 @@
+module lab-net-device-extra-identities {
+  yang-version 1.1;
+  namespace "http://example.com/ns/lab-net-device-identities";
+  prefix lndi;
+
+  import lab-net-device {
+    prefix lnd;
+    revision-date 2026-02-09;
+  }
+
+  organization "Lab";
+  description
+    "Adds extra identity values derived from lnd:if-purpose-idty
+     without modifying the lab-net-device module.";
+
+  revision 2026-02-10 {
+    description "Initial identity extensions.";
+  }
+
+  identity access-port {
+    base lnd:if-purpose-idty;
+    description "Typical user/access-facing port.";
+  }
+
+  identity uplink {
+    base lnd:if-purpose-idty;
+    description "Uplink to distribution/core.";
+  }
+
+  identity server-facing {
+    base lnd:if-purpose-idty;
+    description "Interface facing a server or hypervisor.";
+  }
+
+  identity wireless-backhaul {
+    base lnd:if-purpose-idty;
+    description "Backhaul interface for wireless transport scenarios.";
+  }
+}

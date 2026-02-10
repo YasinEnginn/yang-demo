@@ -7,6 +7,8 @@ import (
 	"yang/internal/models/labnetdevice"
 )
 
+const deviceProfile = "srlinux" // set to "default" if deviations are not installed
+
 func main() {
 	fmt.Println("========================================")
 	fmt.Println("       YANG LAB - NETWORK MANAGER      ")
@@ -29,10 +31,10 @@ func pushNetworkConfig(c *client.Client) {
 	fmt.Println("\n[-] Generating & Pushing Configuration...")
 
 	// 1. Get Demo Data
-	vlans, vrfs, interfaces, routing, bgp, system := createDemoData()
+	vlans, vrfs, qos, interfaces, routing, bgp, system := createDemoData(deviceProfile)
 
 	// 2. Generate XML
-	configData, err := labnetdevice.GenerateEditConfig(vlans, vrfs, interfaces, routing, bgp, system)
+	configData, err := labnetdevice.GenerateEditConfig(vlans, vrfs, qos, interfaces, routing, bgp, system)
 	if err != nil {
 		log.Printf("[-] XML generation error: %v", err)
 		return
@@ -63,6 +65,7 @@ func getNetworkConfig(c *client.Client) {
   <filter type="subtree">
 	<lnd:vlans xmlns:lnd="http://example.com/ns/lab-net-device"/>
 	<lnd:vrfs xmlns:lnd="http://example.com/ns/lab-net-device"/>
+	<lndq:qos xmlns:lndq="http://example.com/ns/lab-net-device-qos"/>
 	<lnd:interfaces xmlns:lnd="http://example.com/ns/lab-net-device"/>
 	<lnd:routing xmlns:lnd="http://example.com/ns/lab-net-device"/>
 	<lnd:bgp xmlns:lnd="http://example.com/ns/lab-net-device"/>
@@ -106,10 +109,26 @@ func getNetworkConfig(c *client.Client) {
 		}
 	}
 
+	if cfg.QoS != nil && len(cfg.QoS.Policy) > 0 {
+		fmt.Println("  QoS Policies:")
+		for _, p := range cfg.QoS.Policy {
+			fmt.Printf("    - %s (Direction: %s)\n", p.Name, p.Direction)
+			for _, c := range p.Class {
+				fmt.Printf("      Class: %s (ID: %d)\n", c.ClassName, c.ClassID)
+			}
+		}
+	}
+
 	if cfg.Interfaces != nil {
 		fmt.Println("  Interfaces:")
 		for _, i := range cfg.Interfaces.Interface {
 			fmt.Printf("    - %s (Enabled: %v)\n", i.Name, safeBool(i.Enabled))
+			if i.Purpose != "" {
+				fmt.Printf("      Purpose: %s\n", i.Purpose)
+			}
+			if i.QoS != nil && (i.QoS.InputPolicy != "" || i.QoS.OutputPolicy != "") {
+				fmt.Printf("      QoS: input=%s output=%s\n", i.QoS.InputPolicy, i.QoS.OutputPolicy)
+			}
 			if i.IPv4 != nil && len(i.IPv4.Address) > 0 {
 				for _, addr := range i.IPv4.Address {
 					fmt.Printf("      IP: %s/%d\n", addr.IP, safeUint8(addr.PrefixLength))

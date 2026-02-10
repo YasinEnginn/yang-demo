@@ -1,0 +1,30 @@
+module lab-net-device-extensions {
+  yang-version 1.1;
+  namespace "http://example.com/ns/lab-net-device-extensions";
+  prefix lndx;
+
+  organization "Lab";
+  description "Custom extension keywords for lab-net-device tooling.";
+
+  revision 2026-02-10 {
+    description "Initial extension keywords.";
+  }
+
+  extension sql-export-to-table {
+    argument table-name;
+    description
+      "Map a list/container to an SQL table name (e.g. 'vlans' or 'inventory.vlans').
+       Argument: table-name - SQL table name.";
+  }
+
+  extension sql-export-to-column {
+    argument column-name;
+    description
+      "Map a leaf to an SQL column name (e.g. 'vlan_id' or 'description').
+       Argument: column-name - SQL column name.";
+  }
+
+  extension sql-export-as-key {
+    description "Mark this leaf as a primary key column.";
+  }
+}

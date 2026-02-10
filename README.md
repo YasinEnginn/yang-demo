@@ -3,7 +3,7 @@
 Hands-on NETCONF + YANG playground built with Go.
 
 This repository shows how to:
-- define a custom YANG module (`yang/lab-net-device.yang`)
+- define a custom YANG model family (base + extensions + augment + identities + deviations)
 - generate NETCONF `<edit-config>` payloads from Go structs
 - push config to a running server (Netopeer2)
 - retrieve and parse config back from `<get-config>`
@@ -13,8 +13,22 @@ This repository shows how to:
 - `cmd/yanglab`: CLI demo that connects to NETCONF, sends config, and reads it back
 - `internal/client`: minimal NETCONF client wrapper (`go-netconf`)
 - `internal/models/labnetdevice`: model structs, XML generation, and parse helpers
-- `yang/lab-net-device.yang`: custom YANG model used by the demo
+- `yang/core/lab-net-device.yang`: custom YANG model used by the demo
+- `yang/extensions/lab-net-device-extensions.yang`: custom extension keywords
+- `yang/augments/lab-net-device-qos-augment.yang`: QoS augment (global policies + interface attach)
+- `yang/identities/lab-net-device-extra-identities.yang`: extra identity values
+- `yang/deviations/lab-net-device-deviations-srlinux.yang`: example platform deviations
 - `cmd/api`: API skeleton (placeholder, not production-ready)
+
+## Module Overview
+
+- `lab-net-device` (`http://example.com/ns/lab-net-device`): base device model with `system`, `vlans`, `vrfs`, `interfaces`, `routing`, and `bgp`.
+- `lab-net-device-extensions` (`http://example.com/ns/lab-net-device-extensions`): custom extension keywords used by the base module to annotate nodes (e.g., SQL export hints). These do not change NETCONF behavior by themselves.
+- `lab-net-device-qos-augment` (`http://example.com/ns/lab-net-device-qos`): adds a global `qos` policy repository and augments `interfaces/interface` with a `qos` container. `input-policy` and `output-policy` are leafrefs with direction checks (`ingress` vs `egress`).
+- `lab-net-device-extra-identities` (`http://example.com/ns/lab-net-device-identities`): adds new identity values that extend `lnd:if-purpose-idty` for `interfaces/interface/purpose` (e.g., `lndi:access-port`).
+- `lab-net-device-deviations-srlinux` (`http://example.com/ns/lab-net-device-deviations/srlinux`): declares platform-specific not-supported nodes (`bgp/neighbor/vrf`, `interfaces/interface/bounce`, `interfaces/interface/switchport`). Client logic should omit these when targeting SR Linux.
+
+Important: importing a module is not enough. The NETCONF server must load and advertise these modules (see the yang-library verification below).
 
 ## System Architecture
 
@@ -64,7 +78,7 @@ The codebase follows a clean "Standard Go Project Layout":
     - **`models`**: Domain logic and data structures.
 
 ### 2. Type-Safe YANG Modeling
-Instead of working with raw maps or loosely typed data, we define **Go structs** that strictly map to the YANG model.
+Instead of working with raw maps or loosely typed data, we define **Go structs** that map to the YANG model subset used by the demo.
 - **Benefits**: Compile-time safety, auto-completion, and clear data contracts.
 - **XML Tags**: Struct fields use `xml:"..."` tags to ensure precise marshalling and unmarshalling that matches the NETCONF schema.
 
@@ -100,7 +114,7 @@ We use a custom YANG module `lab-net-device` (prefix `lnd`) to simulate a realis
 - **`routing`**: Static routes with next-hop validation (IP or outgoing interface).
 - **`bgp`**: Basic BGP configuration including neighbors and AS numbers (supporting both 2-byte and 4-byte ASNs via `union`).
 
-All Go structures in `internal/models/labnetdevice` are strictly mapped to this model using XML tags, ensuring that every configuration pushed to the server is valid according to the YANG schema.
+The demo Go structs in `internal/models/labnetdevice` cover the base module plus the QoS augment and identityref values. Optional leaves, actions, and notifications are not fully modeled.
 
 
 ## Prerequisites
@@ -123,11 +137,22 @@ Optional: wait until the server is fully up.
 docker logs -f netopeer2
 ```
 
-### 2. Install the YANG model into Sysrepo
+### 2. Install the YANG modules into Sysrepo (ordered)
+
+Order matters because `lab-net-device` imports `lab-net-device-extensions`, and the other modules depend on the base model.
 
 ```bash
-docker cp yang/lab-net-device.yang netopeer2:/tmp/
+docker cp yang/extensions/lab-net-device-extensions.yang netopeer2:/tmp/
+docker cp yang/core/lab-net-device.yang netopeer2:/tmp/
+docker cp yang/augments/lab-net-device-qos-augment.yang netopeer2:/tmp/
+docker cp yang/identities/lab-net-device-extra-identities.yang netopeer2:/tmp/
+docker cp yang/deviations/lab-net-device-deviations-srlinux.yang netopeer2:/tmp/
+
+docker exec -it netopeer2 sysrepoctl -i /tmp/lab-net-device-extensions.yang
 docker exec -it netopeer2 sysrepoctl -i /tmp/lab-net-device.yang
+docker exec -it netopeer2 sysrepoctl -i /tmp/lab-net-device-qos-augment.yang
+docker exec -it netopeer2 sysrepoctl -i /tmp/lab-net-device-extra-identities.yang
+docker exec -it netopeer2 sysrepoctl -i /tmp/lab-net-device-deviations-srlinux.yang
 ```
 
 Optional check:
@@ -136,7 +161,17 @@ Optional check:
 docker exec -it netopeer2 sysrepoctl -l
 ```
 
-You should see `lab-net-device` in the module list.
+You should see `lab-net-device` plus the augment/identity/deviation modules in the list.
+
+Quick verification (NETCONF, yang-library):
+
+```xml
+<get>
+  <filter type="subtree">
+    <yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library"/>
+  </filter>
+</get>
+```
 
 ### 3. Run the CLI demo
 
@@ -144,6 +179,10 @@ You should see `lab-net-device` in the module list.
 go mod tidy
 go run ./cmd/yanglab
 ```
+
+The demo currently defaults to the SR Linux deviation profile in `cmd/yanglab/main.go`.
+This omits `switchport` and BGP `vrf` from generated config (because the deviation marks them as `not-supported`).
+Set `deviceProfile` to `default` if you are not loading the deviations module.
 
 Default NETCONF credentials used by the demo:
 - host: `127.0.0.1:830`
@@ -168,28 +207,51 @@ Current endpoint:
 3. `<get-config>` with subtree filter for:
    - `vlans`
    - `vrfs`
+   - `qos`
    - `interfaces`
    - `routing`
    - `bgp`
    - `system`
 4. parse returned XML into Go structs and print selected values
 
-## Validate the YANG Module (Optional)
+## Validate the YANG Modules (Optional)
 
 If you want static validation/lint before loading the module:
 
 ```bash
 python -m pip install --upgrade pip
 python -m pip install pyang
-python -m pyang -f tree yang/lab-net-device.yang
-python -m pyang --lint yang/lab-net-device.yang
+python -m pyang -p yang/core -p yang/extensions -p yang/augments -p yang/identities -p yang/deviations -f tree yang/core/lab-net-device.yang
+python -m pyang -p yang/core -p yang/extensions -p yang/augments -p yang/identities -p yang/deviations --lint yang/core/lab-net-device.yang
+python -m pyang -p yang/core -p yang/extensions -p yang/augments -p yang/identities -p yang/deviations --lint yang/augments/lab-net-device-qos-augment.yang
+python -m pyang -p yang/core -p yang/extensions -p yang/augments -p yang/identities -p yang/deviations --lint yang/identities/lab-net-device-extra-identities.yang
+python -m pyang -p yang/core -p yang/extensions -p yang/augments -p yang/identities -p yang/deviations --lint yang/deviations/lab-net-device-deviations-srlinux.yang
+python -m pyang -p yang/core -p yang/extensions -p yang/augments -p yang/identities -p yang/deviations --lint yang/extensions/lab-net-device-extensions.yang
 ```
 
 ## Troubleshooting
 
 - `unexpected namespace` errors:
-  - verify the exact module namespace in `yang/lab-net-device.yang`
+  - verify the exact module namespace in `yang/core/lab-net-device.yang`
   - ensure the loaded module in Sysrepo matches current file contents
+- `wrong revision ("none" instead "2026-02-09")` when installing identities/deviations:
+  - update the base module in Sysrepo and then reinstall dependents:
+
+```bash
+docker exec -it netopeer2 sysrepoctl -U /tmp/lab-net-device.yang
+docker exec -it netopeer2 sysrepoctl -i /tmp/lab-net-device-extra-identities.yang
+docker exec -it netopeer2 sysrepoctl -i /tmp/lab-net-device-deviations-srlinux.yang
+```
+
+  - if update is not supported, uninstall and reinstall in order:
+
+```bash
+docker exec -it netopeer2 sysrepoctl -u lab-net-device-extra-identities
+docker exec -it netopeer2 sysrepoctl -u lab-net-device-deviations-srlinux
+docker exec -it netopeer2 sysrepoctl -u lab-net-device-qos-augment
+docker exec -it netopeer2 sysrepoctl -u lab-net-device
+docker exec -it netopeer2 sysrepoctl -u lab-net-device-extensions
+```
 - `Edit-Config Failed: ... NACM authorization failed`:
   - this is expected with default Netopeer2 setup, because NACM denies writes for non-recovery users by default
   - quick demo fix: disable NACM in `running` and `startup` (not for production)
@@ -217,4 +279,8 @@ docker exec -it netopeer2 sysrepocfg --import=/tmp/disable-nacm.xml --datastore=
 - `cmd/api/main.go`: API skeleton
 - `internal/client/client.go`: NETCONF session wrapper
 - `internal/models/labnetdevice/labnetdevice.go`: model structs and XML helpers
-- `yang/lab-net-device.yang`: custom YANG module
+- `yang/core/lab-net-device.yang`: base YANG module
+- `yang/extensions/lab-net-device-extensions.yang`: custom extensions
+- `yang/augments/lab-net-device-qos-augment.yang`: QoS augment module
+- `yang/identities/lab-net-device-extra-identities.yang`: extra identities
+- `yang/deviations/lab-net-device-deviations-srlinux.yang`: example deviations

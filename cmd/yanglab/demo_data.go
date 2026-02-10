@@ -3,7 +3,9 @@ package main
 import "yang/internal/models/labnetdevice"
 
 // createDemoData returns the structs for a full network configuration
-func createDemoData() (*labnetdevice.Vlans, *labnetdevice.Vrfs, *labnetdevice.Interfaces, *labnetdevice.Routing, *labnetdevice.Bgp, *labnetdevice.System) {
+func createDemoData(profile string) (*labnetdevice.Vlans, *labnetdevice.Vrfs, *labnetdevice.QoS, *labnetdevice.Interfaces, *labnetdevice.Routing, *labnetdevice.Bgp, *labnetdevice.System) {
+	isSRLinux := profile == "srlinux"
+
 	// System Users
 	system := &labnetdevice.System{
 		Users: &labnetdevice.Users{
@@ -30,6 +32,43 @@ func createDemoData() (*labnetdevice.Vlans, *labnetdevice.Vrfs, *labnetdevice.In
 		},
 	}
 
+	// QoS Policies
+	dscp46 := uint8(46)
+	dscp0 := uint8(0)
+	bw30 := uint8(30)
+	bw50 := uint8(50)
+
+	qos := &labnetdevice.QoS{
+		Policy: []labnetdevice.QoSPolicy{
+			{
+				Name:        "voice-ingress",
+				Direction:   "ingress",
+				DscpDefault: &dscp46,
+				Class: []labnetdevice.QoSClass{
+					{
+						ClassID:          10,
+						ClassName:        "VOICE",
+						BandwidthPercent: &bw30,
+						PolicingRate:     strPtr("auto"),
+					},
+				},
+			},
+			{
+				Name:        "wan-egress",
+				Direction:   "egress",
+				DscpDefault: &dscp0,
+				Class: []labnetdevice.QoSClass{
+					{
+						ClassID:          20,
+						ClassName:        "BUSINESS",
+						BandwidthPercent: &bw50,
+						PolicingRate:     strPtr("100000"), // kbps
+					},
+				},
+			},
+		},
+	}
+
 	// Interfaces
 	enabled := true
 	mtu := uint16(1500)
@@ -38,17 +77,27 @@ func createDemoData() (*labnetdevice.Vlans, *labnetdevice.Vrfs, *labnetdevice.In
 	pl30 := uint8(30)
 	pl32 := uint8(32)
 
+	var accessSwitchport *labnetdevice.Switchport
+	if !isSRLinux {
+		accessSwitchport = &labnetdevice.Switchport{
+			Mode:       "access",
+			AccessVlan: &accessVlan10,
+		}
+	}
+
 	interfaces := &labnetdevice.Interfaces{
 		Interface: []labnetdevice.Interface{
 			{
 				Name:    "GigabitEthernet0/0",
 				Enabled: &enabled,
 				Mtu:     &mtu,
+				Purpose: "lndi:access-port",
 				Vrf:     "blue",
-				Switchport: &labnetdevice.Switchport{
-					Mode:       "access",
-					AccessVlan: &accessVlan10,
+				QoS: &labnetdevice.InterfaceQoS{
+					InputPolicy:  "voice-ingress",
+					OutputPolicy: "wan-egress",
 				},
+				Switchport: accessSwitchport,
 				IPv4: &labnetdevice.IPv4{
 					Address: []labnetdevice.IPv4Address{
 						{IP: "192.0.2.1", PrefixLength: &pl30},
@@ -89,6 +138,10 @@ func createDemoData() (*labnetdevice.Vlans, *labnetdevice.Vrfs, *labnetdevice.In
 	// BGP
 	localAs := uint32(65001)
 	remoteAs := uint32(65002)
+	bgpVrf := "blue"
+	if isSRLinux {
+		bgpVrf = ""
+	}
 
 	bgp := &labnetdevice.Bgp{
 		LocalAs: &localAs,
@@ -96,10 +149,14 @@ func createDemoData() (*labnetdevice.Vlans, *labnetdevice.Vrfs, *labnetdevice.In
 			{
 				Address:  "192.0.2.2",
 				RemoteAs: &remoteAs,
-				Vrf:      "blue",
+				Vrf:      bgpVrf,
 			},
 		},
 	}
 
-	return vlans, vrfs, interfaces, routing, bgp, system
+	return vlans, vrfs, qos, interfaces, routing, bgp, system
+}
+
+func strPtr(s string) *string {
+	return &s
 }

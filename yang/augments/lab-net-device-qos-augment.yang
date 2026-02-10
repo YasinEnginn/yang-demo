@@ -1,0 +1,125 @@
+module lab-net-device-qos-augment {
+  yang-version 1.1;
+  namespace "http://example.com/ns/lab-net-device-qos";
+  prefix lndq;
+
+  import lab-net-device { prefix lnd; }
+  import ietf-yang-types { prefix yang; }
+
+  organization "Lab";
+  description
+    "QoS augment module for lab-net-device. Demonstrates augment, leafref,
+     typedef+enum, pattern, range, union, and unique constraints.";
+
+  revision 2026-02-10 {
+    description "Initial QoS augment module.";
+  }
+
+  /* -------- typedef + enum (core'dan bağımsız) -------- */
+  typedef qos-direction {
+    type enumeration {
+      enum ingress;
+      enum egress;
+    }
+    description "QoS direction.";
+  }
+
+  typedef policy-name {
+    type string {
+      length "1..64";
+      /* pattern örneği: lowercase + dash */
+      pattern '[a-z][a-z0-9-]*';
+    }
+    description "QoS policy name (lowercase, dash allowed).";
+  }
+
+  /* -------- Global repository (key + unique örnekleri) -------- */
+  container qos {
+    description "Global QoS policy repository.";
+
+    list policy {
+      key "name";
+
+      leaf name { type policy-name; }
+
+      leaf direction {
+        type qos-direction;
+        default "ingress";
+      }
+
+      leaf dscp-default {
+        type uint8 { range "0..63"; }   // range örneği
+        default "0";
+        description "Default DSCP mark for traffic not matching any rule.";
+      }
+
+      /* key uniqueness dışı ekstra uniqueness örneği:
+         Bir policy içinde class-name'lerin benzersiz olmasını istiyoruz. */
+      list class {
+        key "class-id";
+
+        leaf class-id { type uint32; }
+
+        leaf class-name {
+          mandatory true;
+          type string {
+            length "1..32";
+            pattern '[A-Z][A-Z0-9_]*';  // pattern örneği (uppercase + underscore)
+          }
+        }
+
+        /* unique statement: aynı policy içinde class-name tekrarlanmasın */
+        unique "class-name";
+
+        leaf bandwidth-percent {
+          type uint8 { range "1..100"; }  // range örneği
+          description "CBWFQ-like bandwidth share.";
+        }
+
+        /* union örneği: policing-rate ya 'auto' olsun ya da kbps sayı */
+        leaf policing-rate {
+          type union {
+            type enumeration { enum auto; }
+            type uint32 { range "64..10000000"; } // kbps
+          }
+          default "auto";
+          description "Policer rate: 'auto' or explicit kbps.";
+        }
+      }
+    }
+  }
+
+  /* -------- Augment: interface altına QoS bağlama -------- */
+  augment "/lnd:interfaces/lnd:interface" {
+    description "Attach QoS policies to an interface.";
+
+    container qos {
+      description "Interface-level QoS settings (augmented).";
+
+      leaf input-policy {
+        type leafref {
+          path "/lndq:qos/lndq:policy/lndq:name";
+        }
+        must "/lndq:qos/lndq:policy[lndq:name = current()]/lndq:direction = 'ingress'" {
+          error-message "input-policy must reference a policy with direction 'ingress'.";
+        }
+        description "Reference to an existing global policy.";
+      }
+
+      leaf output-policy {
+        type leafref {
+          path "/lndq:qos/lndq:policy/lndq:name";
+        }
+        must "/lndq:qos/lndq:policy[lndq:name = current()]/lndq:direction = 'egress'" {
+          error-message "output-policy must reference a policy with direction 'egress'.";
+        }
+      }
+
+      leaf last-applied {
+        config false;
+        type yang:date-and-time;
+        description "When the server last applied QoS to the interface.";
+      }
+    }
+  }
+}

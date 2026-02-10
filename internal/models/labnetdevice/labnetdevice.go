@@ -9,8 +9,10 @@ import (
 )
 
 const (
-	Namespace   = "http://example.com/ns/lab-net-device"
-	NetconfBase = "urn:ietf:params:xml:ns:netconf:base:1.0"
+	Namespace           = "http://example.com/ns/lab-net-device"
+	NamespaceQoS        = "http://example.com/ns/lab-net-device-qos"
+	NamespaceIdentities = "http://example.com/ns/lab-net-device-identities"
+	NetconfBase         = "urn:ietf:params:xml:ns:netconf:base:1.0"
 )
 
 // Config represents the top-level structure for edit-config
@@ -19,6 +21,7 @@ type Config struct {
 	Xmlns      string      `xml:"xmlns,attr,omitempty"`
 	Vlans      *Vlans      `xml:"vlans,omitempty"`
 	Vrfs       *Vrfs       `xml:"vrfs,omitempty"`
+	QoS        *QoS        `xml:"qos,omitempty"`
 	Interfaces *Interfaces `xml:"interfaces,omitempty"`
 	Routing    *Routing    `xml:"routing,omitempty"`
 	Bgp        *Bgp        `xml:"bgp,omitempty"`
@@ -63,19 +66,42 @@ type Vrf struct {
 	Rd   string `xml:"rd,omitempty"`
 }
 
+// QoS Container (augmented module)
+type QoS struct {
+	Xmlns  string      `xml:"xmlns,attr,omitempty"`
+	Policy []QoSPolicy `xml:"policy,omitempty"`
+}
+
+type QoSPolicy struct {
+	Name        string     `xml:"name"`
+	Direction   string     `xml:"direction,omitempty"`   // ingress | egress
+	DscpDefault *uint8     `xml:"dscp-default,omitempty"` // 0..63
+	Class       []QoSClass `xml:"class,omitempty"`
+}
+
+type QoSClass struct {
+	ClassID          uint32  `xml:"class-id"`
+	ClassName        string  `xml:"class-name"`
+	BandwidthPercent *uint8  `xml:"bandwidth-percent,omitempty"`
+	PolicingRate     *string `xml:"policing-rate,omitempty"` // "auto" or numeric string
+}
+
 // Interfaces Container
 type Interfaces struct {
-	Xmlns     string      `xml:"xmlns,attr,omitempty"`
-	Interface []Interface `xml:"interface"`
+	Xmlns            string      `xml:"xmlns,attr,omitempty"`
+	XmlnsIdentities  string      `xml:"xmlns:lndi,attr,omitempty"`
+	Interface        []Interface `xml:"interface"`
 }
 
 type Interface struct {
 	Name       string      `xml:"name"`
 	Enabled    *bool       `xml:"enabled,omitempty"`
 	Mtu        *uint16     `xml:"mtu,omitempty"`
+	Purpose    string      `xml:"purpose,omitempty"`
 	Vrf        string      `xml:"vrf,omitempty"`
 	Switchport *Switchport `xml:"switchport,omitempty"`
 	IPv4       *IPv4       `xml:"ipv4,omitempty"`
+	QoS        *InterfaceQoS `xml:"qos,omitempty"`
 }
 
 type Switchport struct {
@@ -90,6 +116,14 @@ type IPv4 struct {
 type IPv4Address struct {
 	IP           string `xml:"ip"`
 	PrefixLength *uint8 `xml:"prefix-length,omitempty"`
+}
+
+// Interface-level QoS (augmented container)
+type InterfaceQoS struct {
+	Xmlns       string `xml:"xmlns,attr,omitempty"`
+	InputPolicy string `xml:"input-policy,omitempty"`
+	OutputPolicy string `xml:"output-policy,omitempty"`
+	LastApplied string `xml:"last-applied,omitempty"`
 }
 
 // Routing Container
@@ -155,7 +189,7 @@ func (c Config) String() (string, error) {
 // <vrfs ...> ... </vrfs>
 // ...
 // inside <config>
-func GenerateEditConfig(vlans *Vlans, vrfs *Vrfs, interfaces *Interfaces, routing *Routing, bgp *Bgp, system *System) (string, error) {
+func GenerateEditConfig(vlans *Vlans, vrfs *Vrfs, qos *QoS, interfaces *Interfaces, routing *Routing, bgp *Bgp, system *System) (string, error) {
 	// We'll create a temporary struct to marshal all together
 	// We use pointers to omit empty sections
 	data := struct {
@@ -163,6 +197,7 @@ func GenerateEditConfig(vlans *Vlans, vrfs *Vrfs, interfaces *Interfaces, routin
 		Xmlns      string      `xml:"xmlns,attr,omitempty"` // module namespace
 		Vlans      *Vlans      `xml:"vlans,omitempty"`
 		Vrfs       *Vrfs       `xml:"vrfs,omitempty"`
+		QoS        *QoS        `xml:"qos,omitempty"`
 		Interfaces *Interfaces `xml:"interfaces,omitempty"`
 		Routing    *Routing    `xml:"routing,omitempty"`
 		Bgp        *Bgp        `xml:"bgp,omitempty"`
@@ -172,6 +207,7 @@ func GenerateEditConfig(vlans *Vlans, vrfs *Vrfs, interfaces *Interfaces, routin
 		Xmlns:      "",
 		Vlans:      vlans,
 		Vrfs:       vrfs,
+		QoS:        qos,
 		Interfaces: interfaces,
 		Routing:    routing,
 		Bgp:        bgp,
@@ -192,8 +228,17 @@ func GenerateEditConfig(vlans *Vlans, vrfs *Vrfs, interfaces *Interfaces, routin
 	if vrfs != nil {
 		vrfs.Xmlns = Namespace
 	}
+	if qos != nil {
+		qos.Xmlns = NamespaceQoS
+	}
 	if interfaces != nil {
 		interfaces.Xmlns = Namespace
+		interfaces.XmlnsIdentities = NamespaceIdentities
+		for i := range interfaces.Interface {
+			if interfaces.Interface[i].QoS != nil {
+				interfaces.Interface[i].QoS.Xmlns = NamespaceQoS
+			}
+		}
 	}
 	if routing != nil {
 		routing.Xmlns = Namespace
