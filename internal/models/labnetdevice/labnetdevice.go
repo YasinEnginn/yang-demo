@@ -11,6 +11,7 @@ import (
 const (
 	Namespace           = "http://example.com/ns/lab-net-device"
 	NamespaceQoS        = "http://example.com/ns/lab-net-device-qos"
+	NamespacePurpose    = "http://example.com/ns/lab-net-device-purpose"
 	NamespaceIdentities = "http://example.com/ns/lab-net-device-identities"
 	NetconfBase         = "urn:ietf:params:xml:ns:netconf:base:1.0"
 )
@@ -74,7 +75,7 @@ type QoS struct {
 
 type QoSPolicy struct {
 	Name        string     `xml:"name"`
-	Direction   string     `xml:"direction,omitempty"`   // ingress | egress
+	Direction   string     `xml:"direction,omitempty"`    // ingress | egress
 	DscpDefault *uint8     `xml:"dscp-default,omitempty"` // 0..63
 	Class       []QoSClass `xml:"class,omitempty"`
 }
@@ -88,20 +89,26 @@ type QoSClass struct {
 
 // Interfaces Container
 type Interfaces struct {
-	Xmlns            string      `xml:"xmlns,attr,omitempty"`
-	XmlnsIdentities  string      `xml:"xmlns:lndi,attr,omitempty"`
-	Interface        []Interface `xml:"interface"`
+	Xmlns           string      `xml:"xmlns,attr,omitempty"`
+	XmlnsIdentities string      `xml:"xmlns:lndi,attr,omitempty"`
+	Interface       []Interface `xml:"interface"`
 }
 
 type Interface struct {
-	Name       string      `xml:"name"`
-	Enabled    *bool       `xml:"enabled,omitempty"`
-	Mtu        *uint16     `xml:"mtu,omitempty"`
-	Purpose    string      `xml:"purpose,omitempty"`
-	Vrf        string      `xml:"vrf,omitempty"`
-	Switchport *Switchport `xml:"switchport,omitempty"`
-	IPv4       *IPv4       `xml:"ipv4,omitempty"`
-	QoS        *InterfaceQoS `xml:"qos,omitempty"`
+	Name            string             `xml:"name"`
+	Enabled         *bool              `xml:"enabled,omitempty"`
+	Mtu             *uint16            `xml:"mtu,omitempty"`
+	Purpose         *Purpose           `xml:"purpose,omitempty"`
+	Vrf             string             `xml:"vrf,omitempty"`
+	Switchport      *Switchport        `xml:"switchport,omitempty"`
+	IPv4            *IPv4              `xml:"ipv4,omitempty"`
+	QoS             *InterfaceQoS      `xml:"qos,omitempty"`
+	OperStatus      string             `xml:"oper-status,omitempty"`
+	LastChange      string             `xml:"last-change,omitempty"`
+	PhysAddress     string             `xml:"phys-address,omitempty"`
+	SpeedMbps       *uint32            `xml:"speed-mbps,omitempty"`
+	HardwarePresent *bool              `xml:"hardware-present,omitempty"`
+	Counters        *InterfaceCounters `xml:"counters,omitempty"`
 }
 
 type Switchport struct {
@@ -118,12 +125,22 @@ type IPv4Address struct {
 	PrefixLength *uint8 `xml:"prefix-length,omitempty"`
 }
 
+type Purpose struct {
+	Xmlns string `xml:"xmlns,attr,omitempty"`
+	Value string `xml:",chardata"`
+}
+
+type InterfaceCounters struct {
+	InOctets  *uint64 `xml:"in-octets,omitempty"`
+	OutOctets *uint64 `xml:"out-octets,omitempty"`
+}
+
 // Interface-level QoS (augmented container)
 type InterfaceQoS struct {
-	Xmlns       string `xml:"xmlns,attr,omitempty"`
-	InputPolicy string `xml:"input-policy,omitempty"`
+	Xmlns        string `xml:"xmlns,attr,omitempty"`
+	InputPolicy  string `xml:"input-policy,omitempty"`
 	OutputPolicy string `xml:"output-policy,omitempty"`
-	LastApplied string `xml:"last-applied,omitempty"`
+	LastApplied  string `xml:"last-applied,omitempty"`
 }
 
 // Routing Container
@@ -158,23 +175,6 @@ type Neighbor struct {
 	Address  string  `xml:"address"`
 	RemoteAs *uint32 `xml:"remote-as,omitempty"`
 	Vrf      string  `xml:"vrf,omitempty"`
-}
-
-// Helper to generate XML string
-func (c Config) String() (string, error) {
-	// We only marshal the *content* inside <config>...</config> usually,
-	// but here we can marshal the whole thing and strip the outer tag if needed,
-	// or return properly formatted XML.
-	// For netconf edit-config, we need the content inside <config>.
-	// However, usually Go XML marshaling includes the root.
-	// Let's marshal internal fields individually or create a wrapper.
-
-	// Actually, easier way:
-	output, err := xml.MarshalIndent(c, "", "  ")
-	if err != nil {
-		return "", err
-	}
-	return string(output), nil
 }
 
 // GenerateEditConfig generates the content for <edit-config><target><running/></target><config>...</config></edit-config>
@@ -235,6 +235,9 @@ func GenerateEditConfig(vlans *Vlans, vrfs *Vrfs, qos *QoS, interfaces *Interfac
 		interfaces.Xmlns = Namespace
 		interfaces.XmlnsIdentities = NamespaceIdentities
 		for i := range interfaces.Interface {
+			if interfaces.Interface[i].Purpose != nil {
+				interfaces.Interface[i].Purpose.Xmlns = NamespacePurpose
+			}
 			if interfaces.Interface[i].QoS != nil {
 				interfaces.Interface[i].QoS.Xmlns = NamespaceQoS
 			}

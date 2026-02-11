@@ -1,0 +1,71 @@
+module lab-net-device-nmda-operstate-augment {
+  yang-version 1.1;
+  namespace "http://example.com/ns/lab-net-device-operstate";
+  prefix lndo;
+
+  import lab-net-device { prefix lnd; }
+  import ietf-yang-types { prefix yang; }
+
+  organization "Lab";
+  contact
+    "Web: <https://github.com/YasinEnginn/YANG>";
+  description
+    "Adds NMDA-style operational state leaves for interfaces.";
+
+  revision 2026-02-11 {
+    description "Add NMDA-style operational leaves.";
+    reference "0.1.0";
+  }
+
+  augment "/lnd:interfaces/lnd:interface" {
+    description "Interface operational state (config false).";
+
+    leaf oper-status {
+      type enumeration {
+        enum up { description "Link up."; }
+        enum down { description "Link down."; }
+        enum testing { description "Link in testing."; }
+      }
+      config false;
+      description "Actual link status.";
+    }
+
+    leaf last-change {
+      type yang:date-and-time;
+      config false;
+      description "Time of last oper-status change.";
+    }
+
+    leaf phys-address {
+      type string;
+      config false;
+      description "MAC address (string for lab simplicity).";
+    }
+
+    leaf speed-mbps {
+      type uint32;
+      config false;
+      description "Current speed in Mbps.";
+    }
+
+    leaf hardware-present {
+      type boolean;
+      config false;
+      description "True if hardware exists; false => pre-provisioned config possible.";
+    }
+
+    container counters {
+      config false;
+      description "Interface counters.";
+
+      leaf in-octets { 
+        type uint64; 
+        description "Input octets.";
+      }
+      leaf out-octets { 
+        type uint64; 
+        description "Output octets.";
+      }
+    }
+  }
+}

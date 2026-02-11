@@ -3,7 +3,7 @@ package main
 import "yang/internal/models/labnetdevice"
 
 // createDemoData returns the structs for a full network configuration
-func createDemoData(profile string) (*labnetdevice.Vlans, *labnetdevice.Vrfs, *labnetdevice.QoS, *labnetdevice.Interfaces, *labnetdevice.Routing, *labnetdevice.Bgp, *labnetdevice.System) {
+func createDemoData(profile string, preprov bool) (*labnetdevice.Vlans, *labnetdevice.Vrfs, *labnetdevice.QoS, *labnetdevice.Interfaces, *labnetdevice.Routing, *labnetdevice.Bgp, *labnetdevice.System) {
 	isSRLinux := profile == "srlinux"
 
 	// System Users
@@ -91,7 +91,7 @@ func createDemoData(profile string) (*labnetdevice.Vlans, *labnetdevice.Vrfs, *l
 				Name:    "GigabitEthernet0/0",
 				Enabled: &enabled,
 				Mtu:     &mtu,
-				Purpose: "lndi:access-port",
+				Purpose: &labnetdevice.Purpose{Value: "lndi:access-port"},
 				Vrf:     "blue",
 				QoS: &labnetdevice.InterfaceQoS{
 					InputPolicy:  "voice-ingress",
@@ -116,6 +116,16 @@ func createDemoData(profile string) (*labnetdevice.Vlans, *labnetdevice.Vrfs, *l
 				},
 			},
 		},
+	}
+
+	if preprov {
+		interfaces.Interface = append(interfaces.Interface, labnetdevice.Interface{
+			Name:    "GigabitEthernet1/1",
+			Enabled: &enabled,
+			Mtu:     &mtu,
+			Purpose: &labnetdevice.Purpose{Value: "lndi:uplink"},
+			Vrf:     "blue",
+		})
 	}
 
 	// Routing

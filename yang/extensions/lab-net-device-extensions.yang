@@ -4,10 +4,14 @@ module lab-net-device-extensions {
   prefix lndx;
 
   organization "Lab";
+  contact
+    "Web: <https://github.com/YasinEnginn/YANG>";
+
   description "Custom extension keywords for lab-net-device tooling.";
 
   revision 2026-02-10 {
     description "Initial extension keywords.";
+    reference "0.1.0";
   }
 
   extension sql-export-to-table {

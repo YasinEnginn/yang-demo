@@ -1,8 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
+	"strings"
 	"yang/internal/client"
 	"yang/internal/models/labnetdevice"
 )
@@ -10,6 +12,10 @@ import (
 const deviceProfile = "srlinux" // set to "default" if deviations are not installed
 
 func main() {
+	mode := flag.String("mode", "config", "config | get | get-data")
+	preprov := flag.Bool("preprov", false, "include a pre-provisioned interface in config")
+	flag.Parse()
+
 	fmt.Println("========================================")
 	fmt.Println("       YANG LAB - NETWORK MANAGER      ")
 	fmt.Println("========================================")
@@ -23,15 +29,23 @@ func main() {
 	fmt.Println("[+] Connected to NETCONF Server (127.0.0.1:830)")
 
 	// 2. Execute Operations directly
-	pushNetworkConfig(c)
-	getNetworkConfig(c)
+	pushNetworkConfig(c, *preprov)
+	c.Close()
+
+	// Reconnect for get to ensure clean state
+	c2, err := client.New("127.0.0.1:830", "netconf", "netconf")
+	if err != nil {
+		log.Fatalf("[-] Reconnection Failed: %v", err)
+	}
+	defer c2.Close()
+	getNetworkConfig(c2, *mode)
 }
 
-func pushNetworkConfig(c *client.Client) {
+func pushNetworkConfig(c *client.Client, preprov bool) {
 	fmt.Println("\n[-] Generating & Pushing Configuration...")
 
 	// 1. Get Demo Data
-	vlans, vrfs, qos, interfaces, routing, bgp, system := createDemoData(deviceProfile)
+	vlans, vrfs, qos, interfaces, routing, bgp, system := createDemoData(deviceProfile, preprov)
 
 	// 2. Generate XML
 	configData, err := labnetdevice.GenerateEditConfig(vlans, vrfs, qos, interfaces, routing, bgp, system)
@@ -56,12 +70,15 @@ func pushNetworkConfig(c *client.Client) {
 	fmt.Printf("    Message ID: %s\n", reply.MessageID)
 }
 
-func getNetworkConfig(c *client.Client) {
-	fmt.Println("\n[-] Retrieving Configuration...")
+func getNetworkConfig(c *client.Client, mode string) {
+	mode = strings.ToLower(strings.TrimSpace(mode))
+	label := "Get-Config"
+	rpc := ""
 
-	// Using explicit prefixes to avoid ambiguity
-	rpc := `<get-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
-  <source><running/></source>
+	switch mode {
+	case "get":
+		label = "Get"
+		rpc = `<get xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
   <filter type="subtree">
 	<lnd:vlans xmlns:lnd="http://example.com/ns/lab-net-device"/>
 	<lnd:vrfs xmlns:lnd="http://example.com/ns/lab-net-device"/>
@@ -71,15 +88,46 @@ func getNetworkConfig(c *client.Client) {
 	<lnd:bgp xmlns:lnd="http://example.com/ns/lab-net-device"/>
 	<lnd:system xmlns:lnd="http://example.com/ns/lab-net-device"/>
   </filter>
+</get>`
+	case "get-data":
+		label = "Get-Data"
+		rpc = `<get-data xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-nmda">
+  <datastore>operational</datastore>
+  <subtree-filter>
+	<lnd:vlans xmlns:lnd="http://example.com/ns/lab-net-device"/>
+	<lnd:vrfs xmlns:lnd="http://example.com/ns/lab-net-device"/>
+	<lndq:qos xmlns:lndq="http://example.com/ns/lab-net-device-qos"/>
+	<lnd:interfaces xmlns:lnd="http://example.com/ns/lab-net-device"/>
+	<lnd:routing xmlns:lnd="http://example.com/ns/lab-net-device"/>
+	<lnd:bgp xmlns:lnd="http://example.com/ns/lab-net-device"/>
+	<lnd:system xmlns:lnd="http://example.com/ns/lab-net-device"/>
+  </subtree-filter>
+</get-data>`
+	default:
+		label = "Get-Config"
+		// Using explicit prefixes to avoid ambiguity
+		rpc = `<get-config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+  <source><running/></source>
+  <filter type="subtree">
+	<lnd:vlans xmlns:lnd="http://example.com/ns/lab-net-device"/>
+	<lnd:vrfs xmlns:lnd="http://example.com/ns/lab-net-device"/>
+	<lndq:qos xmlns:lndq="http://example.com/ns/lab-net-device-qos"/>
+	<lnd:routing xmlns:lnd="http://example.com/ns/lab-net-device"/>
+	<lnd:bgp xmlns:lnd="http://example.com/ns/lab-net-device"/>
+	<lnd:system xmlns:lnd="http://example.com/ns/lab-net-device"/>
+  </filter>
 </get-config>`
+	}
+
+	fmt.Printf("\n[-] Retrieving Configuration (%s)...\n", label)
 
 	reply, err := c.Exec(rpc)
 	if err != nil {
-		log.Printf("[-] Get-Config Failed: %v", err)
+		log.Printf("[-] %s Failed: %v", label, err)
 		return
 	}
 	fmt.Println("[+] Current Configuration (Raw XML):")
-	// fmt.Println(reply.Data)
+	fmt.Println(reply.Data)
 
 	// Parse and display structured data
 	cfg, err := labnetdevice.ParseConfig(reply.Data)
@@ -123,8 +171,29 @@ func getNetworkConfig(c *client.Client) {
 		fmt.Println("  Interfaces:")
 		for _, i := range cfg.Interfaces.Interface {
 			fmt.Printf("    - %s (Enabled: %v)\n", i.Name, safeBool(i.Enabled))
-			if i.Purpose != "" {
-				fmt.Printf("      Purpose: %s\n", i.Purpose)
+			if i.Purpose != nil && i.Purpose.Value != "" {
+				fmt.Printf("      Purpose: %s\n", i.Purpose.Value)
+			}
+			if i.OperStatus != "" {
+				fmt.Printf("      Oper-Status: %s\n", i.OperStatus)
+			}
+			if i.LastChange != "" {
+				fmt.Printf("      Last-Change: %s\n", i.LastChange)
+			}
+			if i.PhysAddress != "" {
+				fmt.Printf("      Phys-Address: %s\n", i.PhysAddress)
+			}
+			if i.SpeedMbps != nil {
+				fmt.Printf("      Speed-Mbps: %d\n", safeUint32(i.SpeedMbps))
+			}
+			if i.HardwarePresent != nil {
+				fmt.Printf("      Hardware-Present: %v\n", safeBool(i.HardwarePresent))
+			}
+			if i.Counters != nil {
+				fmt.Printf("      Counters: in=%d out=%d\n",
+					safeUint64(i.Counters.InOctets),
+					safeUint64(i.Counters.OutOctets),
+				)
 			}
 			if i.QoS != nil && (i.QoS.InputPolicy != "" || i.QoS.OutputPolicy != "") {
 				fmt.Printf("      QoS: input=%s output=%s\n", i.QoS.InputPolicy, i.QoS.OutputPolicy)
@@ -176,6 +245,13 @@ func safeUint8(p *uint8) uint8 {
 }
 
 func safeUint32(p *uint32) uint32 {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
+func safeUint64(p *uint64) uint64 {
 	if p == nil {
 		return 0
 	}

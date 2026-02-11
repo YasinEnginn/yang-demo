@@ -7,19 +7,26 @@ module lab-net-device-qos-augment {
   import ietf-yang-types { prefix yang; }
 
   organization "Lab";
+  contact
+    "Web: <https://github.com/YasinEnginn/YANG>";
   description
     "QoS augment module for lab-net-device. Demonstrates augment, leafref,
      typedef+enum, pattern, range, union, and unique constraints.";
 
   revision 2026-02-10 {
     description "Initial QoS augment module.";
+    reference "0.1.0";
   }
 
   /* -------- typedef + enum (core'dan bağımsız) -------- */
   typedef qos-direction {
     type enumeration {
-      enum ingress;
-      enum egress;
+      enum ingress {
+        description "Ingress traffic.";
+      }
+      enum egress {
+        description "Egress traffic.";
+      }
     }
     description "QoS direction.";
   }
@@ -39,12 +46,17 @@ module lab-net-device-qos-augment {
 
     list policy {
       key "name";
+      description "List of QoS policies.";
 
-      leaf name { type policy-name; }
+      leaf name { 
+        type policy-name;
+        description "Policy name.";
+      }
 
       leaf direction {
         type qos-direction;
         default "ingress";
+        description "Traffic direction (ingress/egress).";
       }
 
       leaf dscp-default {
@@ -57,19 +69,22 @@ module lab-net-device-qos-augment {
          Bir policy içinde class-name'lerin benzersiz olmasını istiyoruz. */
       list class {
         key "class-id";
+        unique "class-name";
+        description "List of QoS classes.";
 
-        leaf class-id { type uint32; }
+        leaf class-id {  
+          type uint32;
+          description "QoS Class ID.";
+        }
 
         leaf class-name {
-          mandatory true;
           type string {
             length "1..32";
             pattern '[A-Z][A-Z0-9_]*';  // pattern örneği (uppercase + underscore)
           }
+          mandatory true;
+          description "QoS Class Name.";
         }
-
-        /* unique statement: aynı policy içinde class-name tekrarlanmasın */
-        unique "class-name";
 
         leaf bandwidth-percent {
           type uint8 { range "1..100"; }  // range örneği
@@ -79,7 +94,11 @@ module lab-net-device-qos-augment {
         /* union örneği: policing-rate ya 'auto' olsun ya da kbps sayı */
         leaf policing-rate {
           type union {
-            type enumeration { enum auto; }
+            type enumeration { 
+              enum auto {
+                description "Automatic policing rate.";
+              }
+            }
             type uint32 { range "64..10000000"; } // kbps
           }
           default "auto";
@@ -113,11 +132,12 @@ module lab-net-device-qos-augment {
         must "/lndq:qos/lndq:policy[lndq:name = current()]/lndq:direction = 'egress'" {
           error-message "output-policy must reference a policy with direction 'egress'.";
         }
+        description "Reference to an existing global policy (egress).";
       }
 
       leaf last-applied {
-        config false;
         type yang:date-and-time;
+        config false;
         description "When the server last applied QoS to the interface.";
       }
     }

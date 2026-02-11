@@ -1,0 +1,27 @@
+module lab-net-device-purpose-augment {
+  yang-version 1.1;
+  namespace "http://example.com/ns/lab-net-device-purpose";
+  prefix lndp;
+
+  import lab-net-device { prefix lnd; }
+
+  organization "Lab";
+  contact
+    "Web: <https://github.com/YasinEnginn/YANG>";
+  description
+    "Adds interface purpose via identityref using an augment.";
+
+  revision 2026-02-11 {
+    description "Add purpose identityref via augment.";
+    reference "0.1.0";
+  }
+
+  augment "/lnd:interfaces/lnd:interface" {
+    description "Attach purpose to an interface.";
+
+    leaf purpose {
+      type identityref { base lnd:if-purpose-idty; }
+      description "Interface purpose.";
+    }
+  }
+}

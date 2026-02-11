@@ -12,13 +12,21 @@ module lab-net-device {
      ------------------------------------------------- */
 
   organization "Lab";
+  contact
+    "Web: <https://github.com/YasinEnginn/YANG>";
   description
     "Network device-like YANG model demonstrating precision:
      key uniqueness, leafref, typedef+enum, pattern, range, union.";
 
+  revision 2026-02-11 {
+    description
+      "Move interface purpose leaf to a dedicated augment module.";
+    reference "0.2.0";
+  }
   revision 2026-02-09 {
     description
       "Added interface action 'bounce' and notification 'interface-state-change'.";
+    reference "0.1.0";
   }
   /* ---------------------------
      IDENTITIES
@@ -78,9 +86,15 @@ module lab-net-device {
   /* Role: enum constrains allowed values. */
   typedef user-role {
     type enumeration {
-      enum admin;
-      enum operator;
-      enum readonly;
+      enum admin {
+        description "Administrator with full privileges.";
+      }
+      enum operator {
+        description "Operator with configuration privileges.";
+      }
+      enum readonly {
+        description "Read-only access.";
+      }
     }
     description "User role on the device.";
   }
@@ -122,6 +136,7 @@ module lab-net-device {
       leaf role {
         type user-role;
         default "readonly";
+        description "Initial role for the user.";
       }
     }
 
@@ -133,6 +148,7 @@ module lab-net-device {
         case success {
           leaf success {
             type empty;
+            description "Operation successful.";
           }
         }
 
@@ -175,6 +191,7 @@ module lab-net-device {
         case success {
           leaf success {
             type empty;
+            description "Operation successful.";
           }
         }
 
@@ -199,8 +216,11 @@ module lab-net-device {
     description "System-wide settings like local users.";
 
     container users {
+      description "Local user configuration.";
+
       list user {
         key "user-id";
+        description "List of local users.";
 
         leaf user-id {
           type string {
@@ -219,6 +239,7 @@ module lab-net-device {
         leaf role {
           type user-role;
           default "readonly";
+          description "User role.";
         }
       }
     }
@@ -230,14 +251,18 @@ module lab-net-device {
     list vlan {
       lndx:sql-export-to-table "vlans";
       key "id";
+      description "List of VLANs.";
+
       leaf id {
         type vlan-id;
         lndx:sql-export-to-column "vlan_id";
         lndx:sql-export-as-key;
+        description "VLAN ID (1-4094).";
       }
       leaf name {
         type string;
         lndx:sql-export-to-column "vlan_name";
+        description "VLAN name.";
       }
     }
   }
@@ -247,8 +272,12 @@ module lab-net-device {
 
     list vrf {
       key "name";
+      description "List of VRFs.";
 
-      leaf name { type vrf-name; }
+      leaf name { 
+        type vrf-name;
+        description "VRF name.";
+      }
 
       /* RD string format is tightened with pattern. */
       leaf rd {
@@ -259,7 +288,10 @@ module lab-net-device {
         description "Route Distinguisher (format: ASN:NN).";
       }
 
-      leaf description { type string; }
+      leaf description { 
+        type string;
+        description "VRF description.";
+      }
     }
   }
 
@@ -268,26 +300,28 @@ module lab-net-device {
 
     list interface {
       key "name";
+      description "List of interfaces.";
 
-      leaf name { type interface-name; }
+      leaf name { 
+        type interface-name;
+        description "Interface name.";
+      }
 
       leaf enabled {
         type boolean;
         default "true";
+        description "Admin state of the interface.";
       }
 
-      leaf description { type string; }
-
-      leaf purpose {
-        type identityref {
-          base if-purpose-idty;
-        }
-        description "Interface purpose (extensible via other modules).";
+      leaf description { 
+        type string;
+        description "Interface description.";
       }
 
       leaf mtu {
         type mtu-type;
         default "1500";
+        description "Interface MTU.";
       }
 
       leaf vrf {
@@ -298,22 +332,37 @@ module lab-net-device {
       }
 
       container ipv4 {
+        description "IPv4 configuration.";
+
         list address {
           key "ip";
-          leaf ip { type inet:ipv4-address; }
+          description "List of IPv4 addresses.";
+
+          leaf ip { 
+            type inet:ipv4-address;
+            description "IPv4 address.";
+          }
           leaf prefix-length {
             type uint8 { range "0..32"; }
+            description "Prefix length (CIDR).";
           }
         }
       }
 
       container switchport {
+        description "Switchport (L2) configuration.";
+
         leaf mode {
           type enumeration {
-            enum access;
-            enum trunk;
+            enum access {
+              description "Access mode (single VLAN).";
+            }
+            enum trunk {
+              description "Trunk mode (multiple VLANs).";
+            }
           }
           default "access";
+          description "Switchport mode.";
         }
 
         leaf access-vlan {
@@ -390,10 +439,16 @@ module lab-net-device {
     description "Routing configuration.";
 
     container static-routes {
+      description "Static route configuration.";
+
       list route {
         key "prefix";
+        description "List of static routes.";
 
-        leaf prefix { type inet:ipv4-prefix; }
+        leaf prefix {
+          type inet:ipv4-prefix;
+          description "Destination prefix (e.g., 10.0.0.0/24).";
+        }
 
         /* Route may belong to a VRF -> leafref to existing VRFs. */
         leaf vrf {
@@ -406,10 +461,12 @@ module lab-net-device {
         /* Next-hop choices via choice (precision). */
         choice next-hop-options {
           mandatory true;
+          description "Next-hop must be either an IP or an interface.";
 
           case next-hop-ip {
             leaf next-hop {
               type inet:ipv4-address;
+              description "Next-hop IP address.";
             }
           }
 
@@ -418,8 +475,9 @@ module lab-net-device {
               type leafref {
                 path "/lnd:interfaces/lnd:interface/lnd:name";
               }
+              description "Outgoing interface name.";
             }
-            leaf gateway-ip {          
+            leaf gateway-ip {
               type inet:ipv4-address;
               description "Optional gateway IP when using an outgoing interface.";
             }
@@ -428,6 +486,7 @@ module lab-net-device {
         leaf distance {
           type admin-distance;
           default "1";
+          description "Administrative distance for this route.";
         }
       }  /* list route */
     }    /* container static-routes */
@@ -436,17 +495,29 @@ module lab-net-device {
   container bgp {
     description "BGP configuration (minimal).";
 
-    leaf local-as { type asn; }
+    leaf local-as {
+      type asn;
+      description "Local Autonomous System number.";
+    }
 
     list neighbor {
       key "address";
-      leaf address { type inet:ipv4-address; }
-      leaf remote-as { type asn; }
+      description "List of BGP neighbors.";
+
+      leaf address {
+        type inet:ipv4-address;
+        description "Neighbor IP address.";
+      }
+      leaf remote-as {
+        type asn;
+        description "Neighbor Autonomous System number.";
+      }
 
       leaf vrf {
         type leafref {
           path "/lnd:vrfs/lnd:vrf/lnd:name";
         }
+        description "VRF context for this neighbor.";
       }
     }
   }
@@ -465,8 +536,12 @@ module lab-net-device {
 
     leaf new-state {
       type enumeration {
-        enum up;
-        enum down;
+        enum up {
+          description "Interface is up.";
+        }
+        enum down {
+          description "Interface is down.";
+        }
       }
       description
         "New link state. Additional states (e.g., admin-down, testing) can be added later.";
@@ -493,9 +568,15 @@ module lab-net-device {
 
     leaf operation {
       type enumeration {
-        enum created;
-        enum updated;
-        enum deleted;
+        enum created {
+          description "A new user was created.";
+        }
+        enum updated {
+          description "An existing user was updated.";
+        }
+        enum deleted {
+          description "A user was deleted.";
+        }
       }
       description "Type of user change.";
     }

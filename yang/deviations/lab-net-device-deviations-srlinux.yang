@@ -5,15 +5,23 @@ module lab-net-device-deviations-srlinux {
 
   import lab-net-device {
     prefix lnd;
-    revision-date 2026-02-09;
+    revision-date 2026-02-11;
   }
 
   organization "Lab";
+  contact
+    "Web: <https://github.com/YasinEnginn/YANG>";
+
   description
     "Deviations for a specific platform profile (example: SR Linux lab image).";
 
+  revision 2026-02-11 {
+    description "Update base module revision reference.";
+    reference "0.2.0";
+  }
   revision 2026-02-10 {
     description "Initial deviation declarations.";
+    reference "0.1.0";
   }
 
   deviation "/lnd:bgp/lnd:neighbor/lnd:vrf" {
